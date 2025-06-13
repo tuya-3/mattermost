@@ -5,11 +5,14 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 import QuickInput from 'components/quick_input';
+import AtMention from 'components/at_mention';
 
 import Constants, {A11yCustomEventTypes} from 'utils/constants';
 import * as Keyboard from 'utils/keyboard';
 import * as UserAgent from 'utils/user_agent';
 import * as Utils from 'utils/utils';
+
+import './suggestion_box_mention_overlay.scss';
 
 const EXECUTE_CURRENT_COMMAND_ITEM_ID = Constants.Integrations.EXECUTE_CURRENT_COMMAND_ITEM_ID;
 const OPEN_COMMAND_IN_MODAL_ITEM_ID = Constants.Integrations.OPEN_COMMAND_IN_MODAL_ITEM_ID;
@@ -770,6 +773,48 @@ export default class SuggestionBox extends React.PureComponent {
         return listPosition === 'bottom' && this.state.suggestionBoxAlgn.placementShift ? 'top' : listPosition;
     };
 
+    renderMentionOverlay() {
+        const {value} = this.props;
+        if (!value) {
+            return null;
+        }
+
+        // メンション部分を検出して変換
+        const mentionRegex = /@([a-z0-9.\-_]+)/gi;
+        const parts = [];
+        let lastIndex = 0;
+        let match;
+
+        while ((match = mentionRegex.exec(value)) !== null) {
+            // メンション前のテキスト
+            if (match.index > lastIndex) {
+                parts.push(value.substring(lastIndex, match.index));
+            }
+            
+            // メンション部分をAtMentionコンポーネントで表示
+            parts.push(
+                <AtMention
+                    key={`mention-${match.index}`}
+                    mentionName={match[1]}
+                    displayMode='fullname'
+                />
+            );
+            
+            lastIndex = match.index + match[0].length;
+        }
+
+        // 残りのテキスト
+        if (lastIndex < value.length) {
+            parts.push(value.substring(lastIndex));
+        }
+
+        return (
+            <div className='suggestion-box-mention-overlay'>
+                {parts.length > 0 ? parts : value}
+            </div>
+        );
+    }
+
     render() {
         const {
             dateComponent,
@@ -816,23 +861,34 @@ export default class SuggestionBox extends React.PureComponent {
                 ref={this.setContainerRef}
                 className={this.props.containerClass}
             >
-                <QuickInput
-                    ref={this.inputRef}
-                    autoComplete='off'
-                    {...props}
-                    aria-controls='suggestionList'
-                    role='combobox'
-                    aria-activedescendant={this.state.selection ? `suggestionList_item_${this.state.selection}` : undefined}
-                    aria-autocomplete='list'
-                    aria-expanded={(this.state.focused || this.props.forceSuggestionsWhenBlur) && this.state.items.length > 0}
-                    onInput={this.handleChange}
-                    onCompositionStart={this.handleCompositionStart}
-                    onCompositionUpdate={this.handleCompositionUpdate}
-                    onCompositionEnd={this.handleCompositionEnd}
-                    onKeyDown={this.handleKeyDown}
+                <div
+                    ref={this.suggestionReadOut}
+                    aria-live='polite'
+                    role='alert'
+                    className='sr-only'
                 />
+                <div className='suggestion-box-input-wrapper'>
+                    {this.renderMentionOverlay()}
+                    <QuickInput
+                        ref={this.inputRef}
+                        autoComplete='off'
+                        {...props}
+                        aria-controls='suggestionList'
+                        role='combobox'
+                        {...(this.state.selection && {'aria-activedescendant': `${props.id}_${this.state.selection}`})}
+                        aria-autocomplete='list'
+                        aria-expanded={this.state.focused || this.props.forceSuggestionsWhenBlur}
+                        onInput={this.handleChange}
+                        onCompositionStart={this.handleCompositionStart}
+                        onCompositionUpdate={this.handleCompositionUpdate}
+                        onCompositionEnd={this.handleCompositionEnd}
+                        onKeyDown={this.handleKeyDown}
+                        className={`${props.className || ''} suggestion-box-input-transparent`}
+                    />
+                </div>
                 {(this.props.openWhenEmpty || this.props.value.length >= this.props.requiredCharacters) && this.state.presentationType === 'text' && (
                     <SuggestionListComponent
+                        ariaLiveRef={this.suggestionReadOut}
                         open={this.state.focused || this.props.forceSuggestionsWhenBlur}
                         pretext={this.pretext}
                         position={this.getListPosition(listPosition)}
