@@ -121,6 +121,38 @@ describe('MentionOverlay', () => {
         expect(container.firstChild).not.toHaveClass('undefined');
     });
 
+    it('should render cursor when showCursor is true and cursorPosition is provided', () => {
+        const text = 'Hello world';
+        mockGetMentionRanges.mockReturnValue([]);
+
+        const {container} = render(
+            <MentionOverlay 
+                value={text} 
+                showCursor={true} 
+                cursorPosition={5} 
+            />
+        );
+        
+        expect(screen.getByText('Hello world')).toBeInTheDocument();
+        expect(container.querySelector('.mention-overlay-cursor')).toBeInTheDocument();
+    });
+
+    it('should not render cursor when showCursor is false', () => {
+        const text = 'Hello world';
+        mockGetMentionRanges.mockReturnValue([]);
+
+        const {container} = render(
+            <MentionOverlay 
+                value={text} 
+                showCursor={false} 
+                cursorPosition={5} 
+            />
+        );
+        
+        expect(screen.getByText('Hello world')).toBeInTheDocument();
+        expect(container.querySelector('.mention-overlay-cursor')).not.toBeInTheDocument();
+    });
+
     it('should generate correct keys for mention components', () => {
         const text = 'Hello @john';
         mockGetMentionRanges.mockReturnValue([

@@ -7,7 +7,7 @@ import React from 'react';
 import QuickInput from 'components/quick_input';
 import MentionOverlay from 'components/suggestion/mention_overlay/mention_overlay';
 
-import {handleMentionKeyDown, handleMentionMouseUp} from 'utils/mention_utils';
+import {handleMentionKeyDown, handleMentionMouseUp, ensureCaretVisibility, preventMentionExpansion, detectAndFixMentionExpansion} from 'utils/mention_utils';
 import Constants, {A11yCustomEventTypes} from 'utils/constants';
 import * as Keyboard from 'utils/keyboard';
 import * as UserAgent from 'utils/user_agent';
@@ -225,6 +225,8 @@ export default class SuggestionBox extends React.PureComponent {
             allowDividers: true,
             presentationType: 'text',
             suggestionBoxAlgn: undefined,
+            cursorPosition: 0, // Add cursor position tracking
+            previousText: '', // Track previous text for mention expansion detection
         };
 
         this.inputRef = React.createRef();
@@ -335,7 +337,55 @@ export default class SuggestionBox extends React.PureComponent {
 
     handleChange = (e) => {
         const textbox = this.getTextbox();
-        const pretext = this.props.shouldSearchCompleteText ? textbox.value.trim() : textbox.value.substring(0, textbox.selectionEnd);
+        const currentText = textbox.value;
+        const pretext = this.props.shouldSearchCompleteText ? currentText.trim() : currentText.substring(0, textbox.selectionEnd);
+
+        const correctedText = detectAndFixMentionExpansion(currentText, this.state.previousText);
+        
+        if (correctedText !== currentText) {
+            // Update textbox with corrected text
+            textbox.value = correctedText;
+            
+            // Adjust cursor position if needed
+            const cursorPosition = textbox.selectionStart || 0;
+            const lengthDiff = correctedText.length - currentText.length;
+            const newCursorPosition = Math.max(0, cursorPosition + lengthDiff);
+            textbox.setSelectionRange(newCursorPosition, newCursorPosition);
+            
+            // Update state with corrected values
+            this.setState({
+                cursorPosition: newCursorPosition,
+                previousText: correctedText,
+            });
+            
+            // Update pretext with corrected text
+            const correctedPretext = this.props.shouldSearchCompleteText ? correctedText.trim() : correctedText.substring(0, newCursorPosition);
+            
+            if (!this.composing && this.pretext !== correctedPretext) {
+                this.handlePretextChanged(correctedPretext);
+            }
+            
+            // Create a new event with corrected text for parent components
+            const correctedEvent = {
+                ...e,
+                target: {
+                    ...e.target,
+                    value: correctedText,
+                },
+            };
+            
+            if (this.props.onChange) {
+                this.props.onChange(correctedEvent);
+            }
+            
+            return;
+        }
+        
+        // Update cursor position and previous text state
+        this.setState({
+            cursorPosition: textbox.selectionStart || 0,
+            previousText: currentText,
+        });
 
         if (!this.composing && this.pretext !== pretext) {
             this.handlePretextChanged(pretext);
@@ -343,6 +393,47 @@ export default class SuggestionBox extends React.PureComponent {
 
         if (this.props.onChange) {
             this.props.onChange(e);
+        }
+    };
+
+    handleBeforeInput = (e) => {
+        // Skip if composing (CJK input) or if no data
+        if (this.composing || !e.data) {
+            return;
+        }
+
+        const textbox = this.getTextbox();
+        if (!textbox) {
+            return;
+        }
+
+        const currentValue = textbox.value;
+        const cursorPosition = textbox.selectionStart || 0;
+        const inputChar = e.data;
+
+        // Only handle single character insertion
+        if (e.inputType !== 'insertText' && e.inputType !== 'insertCompositionText') {
+            return;
+        }
+
+        // Use preventMentionExpansion to check if we need to insert a space
+        const result = preventMentionExpansion(currentValue, cursorPosition, inputChar);
+        
+        if (result.text !== currentValue) {
+            // Prevent the default input behavior
+            e.preventDefault();
+            
+            // Update the textbox value manually
+            textbox.value = result.text;
+            textbox.setSelectionRange(result.cursorPosition, result.cursorPosition);
+            
+            // Update cursor position state
+            this.setState({
+                cursorPosition: result.cursorPosition,
+            });
+            
+            // Trigger change event to update pretext and suggestions
+            this.handleChange({ target: textbox });
         }
     };
 
@@ -578,8 +669,20 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     handleKeyDown = (e) => {
+        // Update cursor position state
+        setTimeout(() => {
+            const textbox = this.getTextbox();
+            if (textbox) {
+                this.setState({
+                    cursorPosition: textbox.selectionStart || 0,
+                });
+            }
+        }, 0);
+
         // Check mention control first
         if (handleMentionKeyDown(e, this.props.value, this.getTextbox(), this.props.onChange)) {
+            // After mention handling, ensure caret visibility
+            this.ensureCaretVisibility();
             return;
         }
 
@@ -783,12 +886,34 @@ export default class SuggestionBox extends React.PureComponent {
      * Mouse up event handler for mention control
      */
     handleMouseUp = (e) => {
+        // Update cursor position state
+        setTimeout(() => {
+            const textbox = this.getTextbox();
+            if (textbox) {
+                this.setState({
+                    cursorPosition: textbox.selectionStart || 0,
+                });
+            }
+        }, 0);
+
         // Handle mention control on mouse up
         handleMentionMouseUp(this.props.value, this.getTextbox());
+        
+        // Force caret visibility after mouse interactions
+        this.ensureCaretVisibility();
         
         if (this.props.onMouseUp) {
             this.props.onMouseUp(e);
         }
+    };
+
+    /**
+     * Ensure caret visibility especially after mention interactions
+     */
+    ensureCaretVisibility = () => {
+        const textbox = this.getTextbox();
+        
+        ensureCaretVisibility(textbox);
     };
 
     render() {
@@ -844,7 +969,11 @@ export default class SuggestionBox extends React.PureComponent {
                     className='sr-only'
                 />
                 <div className='suggestion-box-input-wrapper'>
-                    <MentionOverlay value={this.props.value} />
+                    <MentionOverlay 
+                        value={this.props.value} 
+                        cursorPosition={this.state.cursorPosition}
+                        showCursor={this.state.focused}
+                    />
                     <QuickInput
                         ref={this.inputRef}
                         autoComplete='off'
@@ -855,6 +984,7 @@ export default class SuggestionBox extends React.PureComponent {
                         aria-autocomplete='list'
                         aria-expanded={this.state.focused || this.props.forceSuggestionsWhenBlur}
                         onInput={this.handleChange}
+                        onBeforeInput={this.handleBeforeInput}
                         onCompositionStart={this.handleCompositionStart}
                         onCompositionUpdate={this.handleCompositionUpdate}
                         onCompositionEnd={this.handleCompositionEnd}

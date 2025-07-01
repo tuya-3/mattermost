@@ -71,9 +71,7 @@
                 opacity: 1;
             }
         }
-    }
-    
-    .mention-click-overlay {
+    }        .mention-click-overlay {
         position: absolute;
         top: 0;
         left: 0;
@@ -97,15 +95,47 @@
         }
     }
     
+    .mention-overlay-cursor {
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        animation: blink 1s infinite;
+        z-index: 10;
+        background-color: var(--center-channel-color) !important;
+        
+        // Ensure cursor is always visible
+        &::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100%;
+            background-color: var(--center-channel-color);
+            animation: inherit;
+        }
+    }
+    
     .suggestion-box-input-transparent {
         position: relative;
         z-index: 1;
         background: transparent !important;
         color: transparent !important;
-        caret-color: var(--center-channel-color) !important;
+        caret-color: transparent !important;
         
         text-shadow: none !important;
         -webkit-text-fill-color: transparent !important;
+        
+        // Hide native caret completely when overlay is active
+        &:focus,
+        &:focus-visible {
+            caret-color: transparent !important;
+            // Force caret to be hidden
+            border-color: transparent !important;
+            outline: none !important;
+        }
         
         &::selection {
             background: rgba(0, 115, 230, 0.2);
@@ -131,7 +161,30 @@
 
 .form-control.suggestion-box-input-transparent {
     color: transparent;
-    caret-color: var(--center-channel-color);
+    caret-color: transparent;
+    
+    // Additional browser-specific caret fixes
+    &:focus {
+        caret-color: transparent !important;
+        -webkit-text-fill-color: transparent !important;
+        // For WebKit browsers, ensure caret is hidden
+        text-shadow: none;
+    }
+}
+
+// Additional global fix for transparent input caret visibility
+input.suggestion-box-input-transparent:focus,
+textarea.suggestion-box-input-transparent:focus {
+    caret-color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    color: transparent !important;
+    
+    // For browsers that don't support caret-color properly
+    @supports not (caret-color: transparent) {
+        color: transparent;
+        text-indent: -9999px;
+        text-align: left;
+    }
 }
 
 .suggestion-box-input-wrapper:focus-within {
