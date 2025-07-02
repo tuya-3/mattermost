@@ -55,9 +55,9 @@ const AtMention = (props: Props) => {
 
     if (user) {
         const userMentionNameSuffix = props.mentionName.substring(user.username.length);
-        const userDisplayName = props.displayMode === 'username'
-            ? user.username
-            : displayUsername(user, props.teammateNameDisplay);
+        const userDisplayName = props.displayMode === 'username' ?
+            user.username :
+            displayUsername(user, props.teammateNameDisplay);
         const highlightMention = !props.disableHighlight && user.id === props.currentUserId;
 
         return (

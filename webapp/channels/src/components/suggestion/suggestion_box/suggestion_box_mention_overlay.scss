@@ -4,49 +4,49 @@
     
     .suggestion-box-mention-overlay {
         position: absolute;
+        z-index: 2;
         top: 0;
-        left: 0;
         right: 0;
         bottom: 0;
-        pointer-events: none;
-        z-index: 2;
+        left: 0;
+        overflow: hidden;
         padding: 13px 16px 12px 16px;
-        white-space: pre-wrap;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: var(--center-channel-color);
+        filter: none !important;
+        font-family: inherit;
         font-size: 14px;
         line-height: 20px;
-        overflow: hidden;
-        background: transparent !important;
-        color: var(--center-channel-color);
-        font-family: inherit;
-        border: none !important;
-        user-select: none;
-        word-wrap: break-word;
-        word-break: break-word;
-        box-shadow: none !important;
         outline: none !important;
-        filter: none !important;
+        pointer-events: none;
+        user-select: none;
+        white-space: pre-wrap;
+        word-break: break-word;
+        word-wrap: break-word;
         
         &::before,
         &::after {
-            background: none !important;
-            content: none !important;
             border: none !important;
+            background: none !important;
             box-shadow: none !important;
+            content: none !important;
         }
         
         .at-mention {
+            position: relative;
             display: inline;
-            background: rgba(var(--mention-color-rgb, 0, 115, 230), 0.1);
+            padding: 1px 3px;
             border: 1px solid rgba(var(--mention-color-rgb, 0, 115, 230), 0.2);
             border-radius: 3px;
-            padding: 1px 3px;
             margin: 0 1px;
-            font-size: inherit;
-            line-height: inherit;
+            background: rgba(var(--mention-color-rgb, 0, 115, 230), 0.1);
             color: var(--mention-color, #0073e6);
-            text-decoration: none;
+            font-size: inherit;
             font-weight: 600;
-            position: relative;
+            line-height: inherit;
+            text-decoration: none;
             
             &:hover {
                 background: rgba(var(--mention-color-rgb, 0, 115, 230), 0.15);
@@ -54,16 +54,16 @@
             }
             
             &::before {
-                content: '';
                 position: absolute;
                 top: -2px;
-                left: -2px;
                 right: -2px;
                 bottom: -2px;
-                border-radius: 5px;
+                left: -2px;
                 border: 1px dashed rgba(var(--mention-color-rgb, 0, 115, 230), 0.3);
-                pointer-events: none;
+                border-radius: 5px;
+                content: '';
                 opacity: 0;
+                pointer-events: none;
                 transition: opacity 0.2s ease;
             }
             
@@ -73,24 +73,24 @@
         }
     }        .mention-click-overlay {
         position: absolute;
+        z-index: 3;
         top: 0;
-        left: 0;
         right: 0;
         bottom: 0;
-        z-index: 3;
+        left: 0;
         pointer-events: none;
         
         .mention-zone {
             position: absolute;
-            background: transparent !important;
-            border-radius: 3px;
             border: 1px dashed rgba(var(--mention-color-rgb, 0, 115, 230), 0.2);
-            pointer-events: auto;
+            border-radius: 3px;
+            background: transparent !important;
             cursor: not-allowed;
+            pointer-events: auto;
             
             &:hover {
-                background: rgba(var(--mention-color-rgb, 0, 115, 230), 0.1);
                 border-color: rgba(var(--mention-color-rgb, 0, 115, 230), 0.4);
+                background: rgba(var(--mention-color-rgb, 0, 115, 230), 0.1);
             }
         }
     }
@@ -100,21 +100,21 @@
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
         }
+        z-index: 10;
         
         animation: blink 1s infinite;
-        z-index: 10;
         background-color: var(--center-channel-color) !important;
         
         // Ensure cursor is always visible
         &::after {
-            content: '';
             position: absolute;
             top: 0;
             left: 0;
             width: 2px;
             height: 100%;
-            background-color: var(--center-channel-color);
             animation: inherit;
+            background-color: var(--center-channel-color);
+            content: '';
         }
     }
     
@@ -122,18 +122,18 @@
         position: relative;
         z-index: 1;
         background: transparent !important;
-        color: transparent !important;
         caret-color: transparent !important;
+        color: transparent !important;
+        -webkit-text-fill-color: transparent !important;
         
         text-shadow: none !important;
-        -webkit-text-fill-color: transparent !important;
         
         // Hide native caret completely when overlay is active
         &:focus,
         &:focus-visible {
-            caret-color: transparent !important;
             // Force caret to be hidden
             border-color: transparent !important;
+            caret-color: transparent !important;
             outline: none !important;
         }
         
@@ -160,8 +160,8 @@
 }
 
 .form-control.suggestion-box-input-transparent {
-    color: transparent;
     caret-color: transparent;
+    color: transparent;
     
     // Additional browser-specific caret fixes
     &:focus {
@@ -176,14 +176,14 @@
 input.suggestion-box-input-transparent:focus,
 textarea.suggestion-box-input-transparent:focus {
     caret-color: transparent !important;
-    -webkit-text-fill-color: transparent !important;
     color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
     
     // For browsers that don't support caret-color properly
     @supports not (caret-color: transparent) {
         color: transparent;
-        text-indent: -9999px;
         text-align: left;
+        text-indent: -9999px;
     }
 }
 

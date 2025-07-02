@@ -42,7 +42,7 @@ export function getMentionRanges(text: string): MentionRange[] {
     // but keep track of original positions
     const cleanText = text.replace(/[\u200B\u200C]/g, ''); // Remove zero-width spaces and non-joiners
     const ranges: MentionRange[] = [];
-    
+
     // Reset regex lastIndex to ensure proper execution
     MENTION_REGEX.lastIndex = 0;
     let match;
@@ -51,7 +51,7 @@ export function getMentionRanges(text: string): MentionRange[] {
         // Map clean text positions back to original text positions
         const originalStart = mapCleanToOriginalPosition(text, match.index);
         const originalEnd = mapCleanToOriginalPosition(text, match.index + match[0].length);
-        
+
         const range = {
             start: originalStart,
             end: originalEnd,
@@ -69,7 +69,7 @@ export function getMentionRanges(text: string): MentionRange[] {
 function mapCleanToOriginalPosition(originalText: string, cleanPosition: number): number {
     let originalPos = 0;
     let cleanPos = 0;
-    
+
     while (cleanPos < cleanPosition && originalPos < originalText.length) {
         const char = originalText[originalPos];
         if (char === '\u200B' || char === '\u200C') {
@@ -81,7 +81,7 @@ function mapCleanToOriginalPosition(originalText: string, cleanPosition: number)
             cleanPos++;
         }
     }
-    
+
     return originalPos;
 }
 
@@ -93,7 +93,7 @@ function mapCleanToOriginalPosition(originalText: string, cleanPosition: number)
  */
 export function getCursorPositionInfo(text: string, cursorPosition: number): CursorPositionInfo {
     if (!text || typeof text !== 'string' || cursorPosition < 0) {
-        return { inArea: false };
+        return {inArea: false};
     }
 
     const mentionRanges = getMentionRanges(text);
@@ -109,7 +109,7 @@ export function getCursorPositionInfo(text: string, cursorPosition: number): Cur
         }
     }
 
-    return { inArea: false };
+    return {inArea: false};
 }
 
 /**
@@ -152,17 +152,17 @@ export function willInvadeMentionArea(
     currentPosition: number,
     key: string,
     ctrlKey = false,
-    metaKey = false
+    metaKey = false,
 ): MentionInvasionResult {
     if (!text || typeof text !== 'string' || currentPosition < 0) {
-        return { willInvade: false };
+        return {willInvade: false};
     }
 
     const mentionRanges = getMentionRanges(text);
 
     // If no mentions found, allow normal processing
     if (mentionRanges.length === 0) {
-        return { willInvade: false };
+        return {willInvade: false};
     }
 
     // Handle Home/Ctrl+Left/Cmd+Left navigation
@@ -170,43 +170,43 @@ export function willInvadeMentionArea(
         const targetPosition = 0;
         for (const range of mentionRanges) {
             if (targetPosition < range.end) {
-                return { willInvade: true, safePosition: range.end };
+                return {willInvade: true, safePosition: range.end};
             }
         }
-        return { willInvade: false };
+        return {willInvade: false};
     }
 
     // Handle regular arrow key navigation
     if (key === 'ArrowLeft' || key === 'ArrowRight') {
         const nextPosition = key === 'ArrowLeft' ? currentPosition - 1 : currentPosition + 1;
-        
+
         for (const range of mentionRanges) {
             // Right arrow: skip over mention completely when entering from the left
             if (key === 'ArrowRight' && currentPosition < range.start && nextPosition >= range.start) {
-                return { willInvade: true, safePosition: range.end };
+                return {willInvade: true, safePosition: range.end};
             }
-            
+
             // Left arrow: handle navigation into and within mentions
             if (key === 'ArrowLeft') {
                 // Coming from right of mention, allow entry to mention's end
                 if (currentPosition > range.end && nextPosition === range.end) {
-                    return { willInvade: false }; // Allow normal movement to mention end
+                    return {willInvade: false}; // Allow normal movement to mention end
                 }
-                
+
                 // Within mention area: skip to mention start when moving left
                 if (currentPosition <= range.end && currentPosition > range.start && nextPosition >= range.start) {
-                    return { willInvade: true, safePosition: range.start };
+                    return {willInvade: true, safePosition: range.start};
                 }
-                
+
                 // At mention start, allow normal left movement
                 if (currentPosition === range.start) {
-                    return { willInvade: false }; // Allow normal movement out of mention
+                    return {willInvade: false}; // Allow normal movement out of mention
                 }
             }
         }
     }
 
-    return { willInvade: false };
+    return {willInvade: false};
 }
 
 /**
@@ -219,10 +219,10 @@ export function willInvadeMentionArea(
 export function handleMentionDeletion(
     text: string,
     cursorPosition: number,
-    key: 'Backspace' | 'Delete'
+    key: 'Backspace' | 'Delete',
 ): MentionDeletionResult {
     if (!text || typeof text !== 'string' || cursorPosition < 0) {
-        return { shouldDelete: false };
+        return {shouldDelete: false};
     }
 
     const mentionRanges = getMentionRanges(text);
@@ -243,24 +243,23 @@ export function handleMentionDeletion(
             cursorPosition > range.end &&
             cursorPosition <= range.end + 1 &&
             text.charAt(range.end) === ' ') {
-            
             const afterSpace = text.substring(range.end + 1);
-            
+
             // If there's text after the space, prevent deletion to avoid mention expansion
             if (afterSpace.trim().length > 0) {
                 return {
                     shouldDelete: false, // Don't delete anything
                     newPosition: cursorPosition, // Keep cursor in same position
                 };
-            } else {
-                // If no text after space, allow normal space deletion
-                const newText = text.substring(0, range.end) + text.substring(range.end + 1);
-                return {
-                    shouldDelete: true,
-                    newPosition: range.end,
-                    newText,
-                };
             }
+
+            // If no text after space, allow normal space deletion
+            const newText = text.substring(0, range.end) + text.substring(range.end + 1);
+            return {
+                shouldDelete: true,
+                newPosition: range.end,
+                newText,
+            };
         }
 
         if (key === 'Backspace' && cursorPosition === range.start) {
@@ -290,7 +289,7 @@ export function handleMentionDeletion(
                 newPosition: range.end,
             };
         }
-        
+
         if (key === 'Backspace' && cursorPosition > range.start && cursorPosition <= range.end) {
             // Backspace within mention → move to mention start
             return {
@@ -300,7 +299,7 @@ export function handleMentionDeletion(
         }
     }
 
-    return { shouldDelete: false };
+    return {shouldDelete: false};
 }
 
 /**
@@ -311,7 +310,7 @@ export function handleMentionKeyDown(
     e: KeyboardEvent,
     value: string,
     textbox: HTMLInputElement | HTMLTextAreaElement | null,
-    onChange: (event: any) => void
+    onChange: (event: any) => void,
 ): boolean {
     if (!textbox || !value) {
         return false;
@@ -324,7 +323,7 @@ export function handleMentionKeyDown(
         const deletionResult = handleMentionDeletion(
             value,
             currentPosition,
-            e.key as 'Backspace' | 'Delete'
+            e.key as 'Backspace' | 'Delete',
         );
 
         if (deletionResult.shouldDelete && deletionResult.newText !== undefined) {
@@ -347,7 +346,7 @@ export function handleMentionKeyDown(
             currentPosition,
             e.key,
             e.ctrlKey,
-            e.metaKey
+            e.metaKey,
         );
 
         if (invasionResult.willInvade && invasionResult.safePosition !== undefined) {
@@ -365,7 +364,7 @@ export function handleMentionKeyDown(
  */
 export function handleMentionMouseUp(
     value: string,
-    textbox: HTMLInputElement | HTMLTextAreaElement | null
+    textbox: HTMLInputElement | HTMLTextAreaElement | null,
 ): void {
     if (!textbox || !value) {
         return;
@@ -390,11 +389,11 @@ function updateTextboxValue(
     textbox: HTMLInputElement | HTMLTextAreaElement,
     value: string,
     cursorPosition: number,
-    onChange: (event: any) => void
+    onChange: (event: any) => void,
 ): void {
     textbox.value = value;
     textbox.setSelectionRange(cursorPosition, cursorPosition);
-    
+
     // Force caret visibility for transparent inputs
     if (textbox.classList.contains('suggestion-box-input-transparent')) {
         // Use a small delay to ensure proper caret rendering
@@ -403,7 +402,7 @@ function updateTextboxValue(
             textbox.focus();
         }, 0);
     }
-    
+
     // Update React state
     onChange({
         target: textbox,
@@ -418,14 +417,14 @@ export function ensureCaretVisibility(textbox: HTMLInputElement | HTMLTextAreaEl
     if (!textbox) {
         return;
     }
-    
+
     if (textbox.classList.contains('suggestion-box-input-transparent')) {
         const position = textbox.selectionStart || 0;
-        
+
         // Use requestAnimationFrame to ensure proper timing
         requestAnimationFrame(() => {
             textbox.setSelectionRange(position, position);
-            
+
             // Force a style recalculation to ensure caret visibility
             const computedStyle = window.getComputedStyle(textbox);
             if (computedStyle.caretColor === 'transparent' || computedStyle.caretColor === 'rgba(0, 0, 0, 0)') {
@@ -445,14 +444,14 @@ export function ensureCaretVisibility(textbox: HTMLInputElement | HTMLTextAreaEl
 export function preventMentionExpansion(
     text: string,
     cursorPosition: number,
-    newChar: string
+    newChar: string,
 ): { text: string; cursorPosition: number } {
     if (!text || typeof text !== 'string' || cursorPosition < 0 || !newChar) {
-        return { text, cursorPosition };
+        return {text, cursorPosition};
     }
 
     const mentionRanges = getMentionRanges(text);
-    
+
     for (const range of mentionRanges) {
         // Check if cursor is right after a mention (at range.end)
         if (cursorPosition === range.end) {
@@ -466,7 +465,7 @@ export function preventMentionExpansion(
     }
 
     // No mention expansion prevention needed
-    return { text, cursorPosition };
+    return {text, cursorPosition};
 }
 
 /**
@@ -481,11 +480,11 @@ export function detectAndFixMentionExpansion(text: string, previousText?: string
     }
 
     const mentionRanges = getMentionRanges(text);
-    
+
     // If we have previous text, we can do more sophisticated detection
     if (previousText && typeof previousText === 'string') {
         const previousRanges = getMentionRanges(previousText);
-        
+
         // Look for mentions that have expanded (become longer)
         for (const currentRange of mentionRanges) {
             for (const prevRange of previousRanges) {
@@ -493,12 +492,11 @@ export function detectAndFixMentionExpansion(text: string, previousText?: string
                 if (prevRange.start === currentRange.start &&
                     currentRange.end > prevRange.end &&
                     currentRange.text.startsWith(prevRange.text)) {
-                    
                     // Extract the expanded part and separate it with zero-width characters
                     const expandedPart = currentRange.text.substring(prevRange.text.length);
                     const separators = '\u200B\u200C\u200B'; // Zero-width space + Zero-width non-joiner + Zero-width space
                     const correctedText = text.substring(0, prevRange.end) + separators + expandedPart + text.substring(currentRange.end);
-                    
+
                     return correctedText;
                 }
             }
@@ -508,16 +506,16 @@ export function detectAndFixMentionExpansion(text: string, previousText?: string
     // Enhanced fallback: Look for mentions that seem to contain non-mention text
     for (const range of mentionRanges) {
         const mentionText = range.text.substring(1); // Remove @
-        
+
         // Check if mention contains suspicious patterns that suggest expansion
         const suspiciousPatterns = [
             /\s/, // Contains space
             /[^a-z0-9.\-_]/i, // Contains non-username characters
         ];
-        
-        const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(mentionText)) ||
+
+        const isSuspicious = suspiciousPatterns.some((pattern) => pattern.test(mentionText)) ||
                            mentionText.length > 50; // Too long
-        
+
         if (isSuspicious) {
             // Try to find where the original mention should end
             const usernameMatch = mentionText.match(/^([a-z0-9.\-_]+)/i);
@@ -526,7 +524,7 @@ export function detectAndFixMentionExpansion(text: string, previousText?: string
                 const expandedPart = mentionText.substring(usernameMatch[1].length);
                 const separator = '\u200B'; // Zero-width space
                 const correctedText = text.substring(0, range.start) + originalMention + separator + expandedPart + text.substring(range.end);
-                
+
                 return correctedText;
             }
         }

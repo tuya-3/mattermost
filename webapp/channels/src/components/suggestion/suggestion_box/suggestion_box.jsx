@@ -7,9 +7,9 @@ import React from 'react';
 import QuickInput from 'components/quick_input';
 import MentionOverlay from 'components/suggestion/mention_overlay/mention_overlay';
 
-import {handleMentionKeyDown, handleMentionMouseUp, ensureCaretVisibility, preventMentionExpansion, detectAndFixMentionExpansion} from 'utils/mention_utils';
 import Constants, {A11yCustomEventTypes} from 'utils/constants';
 import * as Keyboard from 'utils/keyboard';
+import {handleMentionKeyDown, handleMentionMouseUp, ensureCaretVisibility, preventMentionExpansion, detectAndFixMentionExpansion} from 'utils/mention_utils';
 import * as UserAgent from 'utils/user_agent';
 import * as Utils from 'utils/utils';
 
@@ -341,30 +341,30 @@ export default class SuggestionBox extends React.PureComponent {
         const pretext = this.props.shouldSearchCompleteText ? currentText.trim() : currentText.substring(0, textbox.selectionEnd);
 
         const correctedText = detectAndFixMentionExpansion(currentText, this.state.previousText);
-        
+
         if (correctedText !== currentText) {
             // Update textbox with corrected text
             textbox.value = correctedText;
-            
+
             // Adjust cursor position if needed
             const cursorPosition = textbox.selectionStart || 0;
             const lengthDiff = correctedText.length - currentText.length;
             const newCursorPosition = Math.max(0, cursorPosition + lengthDiff);
             textbox.setSelectionRange(newCursorPosition, newCursorPosition);
-            
+
             // Update state with corrected values
             this.setState({
                 cursorPosition: newCursorPosition,
                 previousText: correctedText,
             });
-            
+
             // Update pretext with corrected text
             const correctedPretext = this.props.shouldSearchCompleteText ? correctedText.trim() : correctedText.substring(0, newCursorPosition);
-            
+
             if (!this.composing && this.pretext !== correctedPretext) {
                 this.handlePretextChanged(correctedPretext);
             }
-            
+
             // Create a new event with corrected text for parent components
             const correctedEvent = {
                 ...e,
@@ -373,14 +373,14 @@ export default class SuggestionBox extends React.PureComponent {
                     value: correctedText,
                 },
             };
-            
+
             if (this.props.onChange) {
                 this.props.onChange(correctedEvent);
             }
-            
+
             return;
         }
-        
+
         // Update cursor position and previous text state
         this.setState({
             cursorPosition: textbox.selectionStart || 0,
@@ -418,22 +418,22 @@ export default class SuggestionBox extends React.PureComponent {
 
         // Use preventMentionExpansion to check if we need to insert a space
         const result = preventMentionExpansion(currentValue, cursorPosition, inputChar);
-        
+
         if (result.text !== currentValue) {
             // Prevent the default input behavior
             e.preventDefault();
-            
+
             // Update the textbox value manually
             textbox.value = result.text;
             textbox.setSelectionRange(result.cursorPosition, result.cursorPosition);
-            
+
             // Update cursor position state
             this.setState({
                 cursorPosition: result.cursorPosition,
             });
-            
+
             // Trigger change event to update pretext and suggestions
-            this.handleChange({ target: textbox });
+            this.handleChange({target: textbox});
         }
     };
 
@@ -898,10 +898,10 @@ export default class SuggestionBox extends React.PureComponent {
 
         // Handle mention control on mouse up
         handleMentionMouseUp(this.props.value, this.getTextbox());
-        
+
         // Force caret visibility after mouse interactions
         this.ensureCaretVisibility();
-        
+
         if (this.props.onMouseUp) {
             this.props.onMouseUp(e);
         }
@@ -912,7 +912,7 @@ export default class SuggestionBox extends React.PureComponent {
      */
     ensureCaretVisibility = () => {
         const textbox = this.getTextbox();
-        
+
         ensureCaretVisibility(textbox);
     };
 
@@ -969,8 +969,8 @@ export default class SuggestionBox extends React.PureComponent {
                     className='sr-only'
                 />
                 <div className='suggestion-box-input-wrapper'>
-                    <MentionOverlay 
-                        value={this.props.value} 
+                    <MentionOverlay
+                        value={this.props.value}
                         cursorPosition={this.state.cursorPosition}
                         showCursor={this.state.focused}
                     />
