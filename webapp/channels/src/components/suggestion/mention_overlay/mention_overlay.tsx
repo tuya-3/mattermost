@@ -9,6 +9,21 @@ import AtMention from 'components/at_mention';
 import {getMentionRanges} from 'utils/mention_utils';
 import type {MentionRange} from 'utils/mention_utils';
 
+// Constants for layout measurements
+const OVERLAY_STYLES = {
+    fontSize: '14px',
+    lineHeight: '20px',
+    padding: '16px',
+    cursorWidth: '2px',
+    cursorHeight: '20px',
+} as const;
+
+const POSITION_OFFSETS = {
+    left: 16, // padding offset
+    top: 13,  // padding offset
+    lineHeight: 20,
+} as const;
+
 export type Props = {
     value: string;
     className?: string;
@@ -45,125 +60,16 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
                 // Re-parse the current value to ensure we have the latest state
                 const currentParsedParts = parseMentionText(value);
                 
-                // Create a temporary range to measure text up to cursor position
-                const tempDiv = document.createElement('div');
-                tempDiv.style.visibility = 'hidden';
-                tempDiv.style.position = 'absolute';
-                tempDiv.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
-                tempDiv.style.fontSize = '14px';
-                tempDiv.style.lineHeight = '20px';
-                tempDiv.style.fontFamily = 'inherit';
-                tempDiv.style.padding = '16px'; // Match the overlay padding
-                tempDiv.style.margin = '0';
-                tempDiv.style.border = 'none';
-                tempDiv.style.wordWrap = 'break-word';
-                tempDiv.style.wordBreak = 'break-word';
-                tempDiv.style.width = overlayRef.current.offsetWidth + 'px'; // Match overlay width for proper line wrapping
-                
-                // Build content up to cursor position by mapping input positions to display positions
-                let inputPosition = 0;
-                let foundCursor = false;
-                
-                for (const part of currentParsedParts) {
-                    if (foundCursor) break;
-                    
-                    if (part.type === 'mention') {
-                        const originalMentionLength = part.content.length + 1; // +1 for @
-                        
-                        if (inputPosition + originalMentionLength >= cursorPosition) {
-                            // Cursor is within or at end of this mention
-                            if (cursorPosition > inputPosition) {
-                                // Create a mention element to measure its actual width
-                                // Use button element to match AtMention component structure
-                                const mentionSpan = document.createElement('button');
-                                mentionSpan.className = 'style--none mention--highlight';
-                                mentionSpan.style.display = 'inline';
-                                mentionSpan.style.padding = '0';
-                                mentionSpan.style.margin = '0';
-                                mentionSpan.style.border = 'none';
-                                mentionSpan.style.background = 'transparent';
-                                mentionSpan.style.cursor = 'default';
-                                // Use a placeholder full name for measurement - this will be replaced by actual display name
-                                mentionSpan.textContent = `@${part.content}`;
-                                tempDiv.appendChild(mentionSpan);
-                            }
-                            foundCursor = true;
-                            break;
-                        }
-                        
-                        // Add the full mention
-                        // Use button element to match AtMention component structure
-                        const mentionSpan = document.createElement('button');
-                        mentionSpan.className = 'style--none mention--highlight';
-                        mentionSpan.style.display = 'inline';
-                        mentionSpan.style.padding = '0';
-                        mentionSpan.style.margin = '0';
-                        mentionSpan.style.border = 'none';
-                        mentionSpan.style.background = 'transparent';
-                        mentionSpan.style.cursor = 'default';
-                        mentionSpan.textContent = `@${part.content}`;
-                        tempDiv.appendChild(mentionSpan);
-                        inputPosition += originalMentionLength;
-                    } else {
-                        const textLength = part.content.length;
-                        
-                        if (inputPosition + textLength >= cursorPosition) {
-                            // Cursor is within this text part
-                            const offsetInText = cursorPosition - inputPosition;
-                            const textToCursor = part.content.substring(0, offsetInText);
-                            const textNode = document.createTextNode(textToCursor);
-                            tempDiv.appendChild(textNode);
-                            foundCursor = true;
-                            break;
-                        }
-                        
-                        const textNode = document.createTextNode(part.content);
-                        tempDiv.appendChild(textNode);
-                        inputPosition += textLength;
-                    }
-                }
-                
-                document.body.appendChild(tempDiv);
-                
-                // Try to get the actual rendered width from the AtMention components
-                // AtMention components render as buttons with mention--highlight class, not .at-mention
+                // Get overlay mentions for content replacement
                 const overlayMentions = overlayRef.current.querySelectorAll('button.mention--highlight');
-                const tempMentions = tempDiv.querySelectorAll('button.mention--highlight');
-                                
-                // Replace temp mention content with actual rendered content if available
-                tempMentions.forEach((tempMention, index) => {
-                    const overlayMention = overlayMentions[index];
-                    if (overlayMention) {
-                        tempMention.textContent = overlayMention.textContent;
-                    }
-                });
                 
-                // Simple approach: measure width and calculate line position
-                const width = tempDiv.offsetWidth;
-                
-                // Calculate line position by counting newlines up to cursor position
-                const textUpToCursor = tempDiv.textContent || '';
-                const lines = textUpToCursor.split('\n');
-                const lineNumber = lines.length - 1;
-                const lastLineText = lines[lines.length - 1] || '';
-                
-                // Create a temporary span to measure the width of the last line
-                const lastLineSpan = document.createElement('span');
-                lastLineSpan.style.visibility = 'hidden';
-                lastLineSpan.style.position = 'absolute';
-                lastLineSpan.style.whiteSpace = 'pre';
-                lastLineSpan.style.fontSize = '14px';
-                lastLineSpan.style.fontFamily = 'inherit';
-                lastLineSpan.textContent = lastLineText;
-                document.body.appendChild(lastLineSpan);
-                
-                const lastLineWidth = lastLineSpan.offsetWidth;
-                document.body.removeChild(lastLineSpan);
-                document.body.removeChild(tempDiv);
-                                
-                // Calculate position
-                const left = lastLineWidth + 16; // Add 16px padding offset
-                const top = (lineNumber * 20) + 13; // 20px line height + 13px padding offset
+                // Calculate cursor position using helper function
+                const {left, top} = calculateCursorPosition(
+                    overlayRef.current.offsetWidth,
+                    currentParsedParts,
+                    cursorPosition,
+                    overlayMentions
+                );
                 
                 setActualCursorLeft(left);
                 setActualCursorTop(top);
@@ -172,7 +78,6 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
     }, [value, cursorPosition, showCursor]);
 
     const parseMentionText = (text: string): ParsedMentionPart[] => {
-        
         if (!text || typeof text !== 'string') {
             return [];
         }
@@ -182,26 +87,21 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
             mentionRanges = getMentionRanges(text);
         } catch (error) {
             // Fallback to plain text rendering on parsing errors
-            return [{type: 'text', content: text.replace(/[\u200B\u200C]/g, '')}]; // Remove zero-width characters for display
+            return createTextPart(text);
         }
 
         if (mentionRanges.length === 0) {
-            return [{type: 'text', content: text.replace(/[\u200B\u200C]/g, '')}]; // Remove zero-width characters for display
+            return createTextPart(text);
         }
 
         const parts: ParsedMentionPart[] = [];
         let lastIndex = 0;
 
         for (const range of mentionRanges) {
-            
             // Add text before the mention
             if (range.start > lastIndex) {
                 const textContent = text.substring(lastIndex, range.start);
-                const textPart = {
-                    type: 'text' as const,
-                    content: textContent.replace(/[\u200B\u200C]/g, ''), // Remove zero-width characters for display
-                };
-                parts.push(textPart);
+                parts.push(createTextPartFromContent(textContent));
             }
 
             // Add the mention part
@@ -218,44 +118,15 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
         // Add remaining text after the last mention
         if (lastIndex < text.length) {
             const textContent = text.substring(lastIndex);
-            const textPart = {
-                type: 'text' as const,
-                content: textContent.replace(/[\u200B\u200C]/g, ''), // Remove zero-width characters for display
-            };
-            parts.push(textPart);
+            parts.push(createTextPartFromContent(textContent));
         }
 
         return parts;
     };
 
     const renderParts = (parts: ParsedMentionPart[]): ReactNode[] => {
-        
         return parts.map((part, index) => {
-            
             if (part.type === 'mention') {
-                
-                // For debugging: create a simple styled mention instead of AtMention to test cursor positioning
-                const isDebugMode = false; // Set to true for debugging
-                
-                if (isDebugMode) {
-                    return (
-                        <button
-                            key={`mention-${part.range?.start ?? index}`}
-                            className="style--none mention--highlight"
-                            style={{
-                                display: 'inline',
-                                padding: '0',
-                                margin: '0',
-                                border: 'none',
-                                background: 'rgba(255, 212, 0, 0.2)',
-                                cursor: 'default',
-                            }}
-                        >
-                            {`@${part.content}`}
-                        </button>
-                    );
-                }
-                
                 return (
                     <AtMention
                         key={`mention-${part.range?.start ?? index}`}
@@ -302,8 +173,8 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
                             position: 'absolute',
                             left: `${actualCursorLeft}px`, // Use calculated left position
                             top: `${actualCursorTop}px`, // Use calculated top position
-                            width: '2px',
-                            height: '20px', // Match line-height (20px from CSS)
+                            width: OVERLAY_STYLES.cursorWidth,
+                            height: OVERLAY_STYLES.cursorHeight, // Match line-height
                             backgroundColor: 'var(--center-channel-color)',
                             animation: 'blink 1s infinite',
                             pointerEvents: 'none',
@@ -324,5 +195,155 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
 });
 
 MentionOverlay.displayName = 'MentionOverlay';
+
+/**
+ * Creates and styles a temporary div for text measurement
+ */
+const createMeasurementDiv = (overlayWidth: number): HTMLDivElement => {
+    const tempDiv = document.createElement('div');
+    tempDiv.style.visibility = 'hidden';
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.whiteSpace = 'pre-wrap'; // Preserve line breaks
+    tempDiv.style.fontSize = OVERLAY_STYLES.fontSize;
+    tempDiv.style.lineHeight = OVERLAY_STYLES.lineHeight;
+    tempDiv.style.fontFamily = 'inherit';
+    tempDiv.style.padding = OVERLAY_STYLES.padding; // Match the overlay padding
+    tempDiv.style.margin = '0';
+    tempDiv.style.border = 'none';
+    tempDiv.style.wordWrap = 'break-word';
+    tempDiv.style.wordBreak = 'break-word';
+    tempDiv.style.width = overlayWidth + 'px'; // Match overlay width for proper line wrapping
+    
+    return tempDiv;
+};
+
+/**
+ * Creates a mention button element for measurement
+ */
+const createMentionButton = (content: string): HTMLButtonElement => {
+    const mentionSpan = document.createElement('button');
+    mentionSpan.className = 'style--none mention--highlight';
+    mentionSpan.style.display = 'inline';
+    mentionSpan.style.padding = '0';
+    mentionSpan.style.margin = '0';
+    mentionSpan.style.border = 'none';
+    mentionSpan.style.background = 'transparent';
+    mentionSpan.style.cursor = 'default';
+    mentionSpan.textContent = content;
+    
+    return mentionSpan;
+};
+
+/**
+ * Calculates cursor position based on text measurement
+ */
+const calculateCursorPosition = (
+    overlayWidth: number,
+    currentParsedParts: ParsedMentionPart[],
+    cursorPosition: number,
+    overlayMentions: NodeListOf<Element>
+): { left: number; top: number } => {
+    const tempDiv = createMeasurementDiv(overlayWidth);
+    
+    // Build content up to cursor position by mapping input positions to display positions
+    let inputPosition = 0;
+    let foundCursor = false;
+    
+    for (const part of currentParsedParts) {
+        if (foundCursor) break;
+        
+        if (part.type === 'mention') {
+            const originalMentionLength = part.content.length + 1; // +1 for @
+            
+            if (inputPosition + originalMentionLength >= cursorPosition) {
+                // Cursor is within or at end of this mention
+                if (cursorPosition > inputPosition) {
+                    // Create a mention element to measure its actual width
+                    const mentionSpan = createMentionButton(`@${part.content}`);
+                    tempDiv.appendChild(mentionSpan);
+                }
+                foundCursor = true;
+                break;
+            }
+            
+            // Add the full mention
+            const mentionSpan = createMentionButton(`@${part.content}`);
+            tempDiv.appendChild(mentionSpan);
+            inputPosition += originalMentionLength;
+        } else {
+            const textLength = part.content.length;
+            
+            if (inputPosition + textLength >= cursorPosition) {
+                // Cursor is within this text part
+                const offsetInText = cursorPosition - inputPosition;
+                const textToCursor = part.content.substring(0, offsetInText);
+                const textNode = document.createTextNode(textToCursor);
+                tempDiv.appendChild(textNode);
+                foundCursor = true;
+                break;
+            }
+            
+            const textNode = document.createTextNode(part.content);
+            tempDiv.appendChild(textNode);
+            inputPosition += textLength;
+        }
+    }
+    
+    document.body.appendChild(tempDiv);
+    
+    // Try to get the actual rendered width from the AtMention components
+    const tempMentions = tempDiv.querySelectorAll('button.mention--highlight');
+                    
+    // Replace temp mention content with actual rendered content if available
+    tempMentions.forEach((tempMention, index) => {
+        const overlayMention = overlayMentions[index];
+        if (overlayMention) {
+            tempMention.textContent = overlayMention.textContent;
+        }
+    });
+    
+    // Calculate line position by counting newlines up to cursor position
+    const textUpToCursor = tempDiv.textContent || '';
+    const lines = textUpToCursor.split('\n');
+    const lineNumber = lines.length - 1;
+    const lastLineText = lines[lines.length - 1] || '';
+    
+    // Create a temporary span to measure the width of the last line
+    const lastLineSpan = document.createElement('span');
+    lastLineSpan.style.visibility = 'hidden';
+    lastLineSpan.style.position = 'absolute';
+    lastLineSpan.style.whiteSpace = 'pre';
+    lastLineSpan.style.fontSize = OVERLAY_STYLES.fontSize;
+    lastLineSpan.style.fontFamily = 'inherit';
+    lastLineSpan.textContent = lastLineText;
+    document.body.appendChild(lastLineSpan);
+    
+    const lastLineWidth = lastLineSpan.offsetWidth;
+    document.body.removeChild(lastLineSpan);
+    document.body.removeChild(tempDiv);
+                    
+    // Calculate position
+    const left = lastLineWidth + POSITION_OFFSETS.left; // Add padding offset
+    const top = (lineNumber * POSITION_OFFSETS.lineHeight) + POSITION_OFFSETS.top; // Line height + padding offset
+    
+    return { left, top };
+};
+
+/**
+ * Creates a text part with zero-width character removal
+ */
+const createTextPart = (text: string): ParsedMentionPart[] => {
+    return [{type: 'text', content: text.replace(/[\u200B\u200C]/g, '')}]; // Remove zero-width characters for display
+};
+
+/**
+ * Creates a text part from content with zero-width character removal
+ */
+const createTextPartFromContent = (content: string): ParsedMentionPart => {
+    return {
+        type: 'text' as const,
+        content: content.replace(/[\u200B\u200C]/g, ''), // Remove zero-width characters for display
+    };
+};
 
 export default MentionOverlay;
