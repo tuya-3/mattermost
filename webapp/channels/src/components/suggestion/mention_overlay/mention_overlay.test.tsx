@@ -177,6 +177,6 @@ describe('MentionOverlay', () => {
 
         expect(container.firstChild).toHaveClass('suggestion-box-mention-overlay');
         expect(container.firstChild).toHaveTextContent('123');
-        expect(getMentionRanges).not.toHaveBeenCalled();
+        expect(getMentionRanges).toHaveBeenCalledWith('123');
     });
 });

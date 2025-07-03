@@ -26,7 +26,7 @@ const POSITION_OFFSETS = {
 } as const;
 
 export type Props = {
-    value: string;
+    value: string | null | undefined | any;
     className?: string;
     cursorPosition?: number;
     showCursor?: boolean;
@@ -46,6 +46,14 @@ type ParsedMentionPart = {
  * Based on the patterns established in at_mention_provider for consistent mention handling.
  */
 const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, showCursor = false}) => {
+    // Early return for empty or invalid values
+    if (!value || value === '') {
+        return null;
+    }
+
+    // Convert non-string values to string
+    const stringValue = typeof value === 'string' ? value : String(value);
+
     const overlayRef = useRef<HTMLDivElement>(null);
     const [actualCursorLeft, setActualCursorLeft] = useState<number>(0);
     const [actualCursorTop, setActualCursorTop] = useState<number>(0);
@@ -61,7 +69,7 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
                 }
 
                 // Re-parse the current value to ensure we have the latest state
-                const currentParsedParts = parseMentionText(value);
+                const currentParsedParts = parseMentionText(stringValue);
 
                 // Get overlay mentions for content replacement
                 const overlayMentions = overlayRef.current.querySelectorAll('button.mention--highlight');
@@ -78,7 +86,7 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
                 setActualCursorTop(top);
             });
         }
-    }, [value, cursorPosition, showCursor]);
+    }, [stringValue, cursorPosition, showCursor]);
 
     const parseMentionText = (text: string): ParsedMentionPart[] => {
         if (!text || typeof text !== 'string') {
@@ -163,7 +171,7 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
     };
 
     try {
-        const parsedParts = parseMentionText(value);
+        const parsedParts = parseMentionText(stringValue);
         const renderedParts = renderParts(parsedParts);
 
         return (
@@ -171,7 +179,7 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
                 ref={overlayRef}
                 className={`suggestion-box-mention-overlay ${className || ''}`}
             >
-                {renderedParts.length > 0 ? renderedParts : value}
+                {renderedParts.length > 0 ? renderedParts : stringValue}
                 {showCursor && cursorPosition !== undefined && (
                     <span
                         className='mention-overlay-cursor'
@@ -194,7 +202,7 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
         // Fallback to plain text rendering on any rendering errors
         return (
             <div className={`suggestion-box-mention-overlay ${className || ''}`}>
-                {value}
+                {stringValue}
             </div>
         );
     }
@@ -355,7 +363,7 @@ const createTextPartFromContent = (content: string): ParsedMentionPart => {
 };
 
 MentionOverlay.propTypes = {
-    value: PropTypes.string.isRequired,
+    value: PropTypes.oneOfType([PropTypes.string, PropTypes.any]),
     className: PropTypes.string,
     cursorPosition: PropTypes.number,
     showCursor: PropTypes.bool,
