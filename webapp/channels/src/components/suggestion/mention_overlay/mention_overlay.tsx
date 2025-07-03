@@ -45,21 +45,17 @@ type ParsedMentionPart = {
  *
  * Based on the patterns established in at_mention_provider for consistent mention handling.
  */
-const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, showCursor = false}) => {
-    // Early return for empty or invalid values
-    if (!value || value === '') {
-        return null;
-    }
-
-    // Convert non-string values to string
-    const stringValue = typeof value === 'string' ? value : String(value);
-
+const MentionOverlay: React.NamedExoticComponent<Props> & {
+    propTypes?: any;
+} = React.memo<Props>(({value, className, cursorPosition, showCursor = false}) => {
+    // React Hooks must be called before any conditional returns
     const overlayRef = useRef<HTMLDivElement>(null);
     const [actualCursorLeft, setActualCursorLeft] = useState<number>(0);
     const [actualCursorTop, setActualCursorTop] = useState<number>(0);
 
+    const stringValue = typeof value === 'string' ? value : String(value);
+
     // Calculate actual cursor position using DOM measurement
-    // Must be called before any conditional returns to maintain Hook order
     useEffect(() => {
         if (showCursor && cursorPosition !== undefined && overlayRef.current) {
             // Wait for next frame to ensure AtMention components are rendered
@@ -87,6 +83,10 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
             });
         }
     }, [stringValue, cursorPosition, showCursor]);
+
+    if (!value || value === '') {
+        return null;
+    }
 
     const parseMentionText = (text: string): ParsedMentionPart[] => {
         if (!text || typeof text !== 'string') {
@@ -209,6 +209,13 @@ const MentionOverlay = React.memo<Props>(({value, className, cursorPosition, sho
 });
 
 MentionOverlay.displayName = 'MentionOverlay';
+
+MentionOverlay.propTypes = {
+    value: PropTypes.oneOfType([PropTypes.string, PropTypes.any]),
+    className: PropTypes.string,
+    cursorPosition: PropTypes.number,
+    showCursor: PropTypes.bool,
+};
 
 /**
  * Creates and styles a temporary div for text measurement
@@ -360,13 +367,6 @@ const createTextPartFromContent = (content: string): ParsedMentionPart => {
         type: 'text' as const,
         content: content.replace(/[\u200B\u200C]/g, ''), // Remove zero-width characters for display
     };
-};
-
-MentionOverlay.propTypes = {
-    value: PropTypes.oneOfType([PropTypes.string, PropTypes.any]),
-    className: PropTypes.string,
-    cursorPosition: PropTypes.number,
-    showCursor: PropTypes.bool,
 };
 
 export default MentionOverlay;
