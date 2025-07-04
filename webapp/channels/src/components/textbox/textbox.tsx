@@ -23,10 +23,13 @@ import type Provider from 'components/suggestion/provider';
 import SuggestionBox from 'components/suggestion/suggestion_box';
 import type SuggestionBoxComponent from 'components/suggestion/suggestion_box/suggestion_box';
 import SuggestionList from 'components/suggestion/suggestion_list';
+import MentionOverlay from 'components/suggestion/mention_overlay';
 
 import * as Utils from 'utils/utils';
 
 import type {TextboxElement} from './index';
+
+import './textbox_mention_overlay.scss';
 
 const ALL = ['all'];
 
@@ -239,12 +242,30 @@ export default class Textbox extends React.PureComponent<Props> {
     };
 
     getInputBox = () => {
-        return this.message.current?.getTextbox();
+        // Safety checks for React ref access
+        if (!this.message || !this.message.current) {
+            return null;
+        }
+        
+        const component = this.message.current;
+        
+        // Check if component has getTextbox method (either direct SuggestionBox or SuggestionBoxWithOverlay)
+        if (typeof component.getTextbox === 'function') {
+            try {
+                return component.getTextbox();
+            } catch (error) {
+                console.error('Error calling getTextbox:', error);
+                return null;
+            }
+        }
+        
+        console.warn('Expected component with getTextbox method, got:', component);
+        return null;
     };
 
     focus = () => {
         const textbox = this.getInputBox();
-        if (textbox) {
+        if (textbox && typeof textbox.focus === 'function') {
             textbox.focus();
             Utils.placeCaretAtEnd(textbox);
             setTimeout(() => {
@@ -299,37 +320,43 @@ export default class Textbox extends React.PureComponent<Props> {
                         imageProps={{hideUtilities: true}}
                     />
                 </div>
-                <SuggestionBox
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
-                    ref={this.message}
-                    id={this.props.id}
-                    className={textboxClassName}
-                    spellCheck='true'
-                    placeholder={this.props.createMessage}
-                    onChange={this.handleChange}
-                    onKeyPress={this.props.onKeyPress}
-                    onKeyDown={this.handleKeyDown}
-                    onMouseUp={this.handleMouseUp}
-                    onKeyUp={this.handleKeyUp}
-                    onComposition={this.props.onComposition}
-                    onBlur={this.handleBlur}
-                    onFocus={this.props.onFocus}
-                    onHeightChange={this.props.onHeightChange}
-                    onWidthChange={this.props.onWidthChange}
-                    onPaste={this.props.onPaste}
-                    style={this.getStyle()}
-                    inputComponent={this.props.inputComponent}
-                    listComponent={this.props.suggestionList}
-                    listPosition={this.props.suggestionListPosition}
-                    providers={this.suggestionProviders}
-                    value={this.props.value}
-                    renderDividers={ALL}
-                    disabled={this.props.disabled}
-                    contextId={this.props.channelId}
-                    openWhenEmpty={this.props.openWhenEmpty}
-                    alignWithTextbox={this.props.alignWithTextbox}
-                />
+                <div style={{position: 'relative'}}>
+                    <MentionOverlay
+                        value={this.props.value}
+                        className="textbox-mention-overlay"
+                    />
+                    <SuggestionBox
+                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                        // @ts-ignore
+                        ref={this.message}
+                        id={this.props.id}
+                        className={textboxClassName}
+                        spellCheck='true'
+                        placeholder={this.props.createMessage}
+                        onChange={this.handleChange}
+                        onKeyPress={this.props.onKeyPress}
+                        onKeyDown={this.handleKeyDown}
+                        onMouseUp={this.handleMouseUp}
+                        onKeyUp={this.handleKeyUp}
+                        onComposition={this.props.onComposition}
+                        onBlur={this.handleBlur}
+                        onFocus={this.props.onFocus}
+                        onHeightChange={this.props.onHeightChange}
+                        onWidthChange={this.props.onWidthChange}
+                        onPaste={this.props.onPaste}
+                        style={this.getStyle()}
+                        inputComponent={this.props.inputComponent}
+                        listComponent={this.props.suggestionList}
+                        listPosition={this.props.suggestionListPosition}
+                        providers={this.suggestionProviders}
+                        value={this.props.value}
+                        renderDividers={ALL}
+                        disabled={this.props.disabled}
+                        contextId={this.props.channelId}
+                        openWhenEmpty={this.props.openWhenEmpty}
+                        alignWithTextbox={this.props.alignWithTextbox}
+                    />
+                </div>
             </div>
         );
     }

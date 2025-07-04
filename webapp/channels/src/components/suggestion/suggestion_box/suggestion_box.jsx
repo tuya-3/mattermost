@@ -162,7 +162,6 @@ export default class SuggestionBox extends React.PureComponent {
         maxLength: PropTypes.string,
         delayInputUpdate: PropTypes.bool,
         spellCheck: PropTypes.string,
-        onMouseUp: PropTypes.func,
         onKeyUp: PropTypes.func,
         onHeightChange: PropTypes.func,
         onWidthChange: PropTypes.func,
@@ -816,24 +815,27 @@ export default class SuggestionBox extends React.PureComponent {
                 ref={this.setContainerRef}
                 className={this.props.containerClass}
             >
-                <QuickInput
-                    ref={this.inputRef}
-                    autoComplete='off'
-                    {...props}
-                    aria-controls='suggestionList'
-                    role='combobox'
-                    aria-activedescendant={this.state.selection ? `suggestionList_item_${this.state.selection}` : undefined}
-                    aria-autocomplete='list'
-                    aria-expanded={(this.state.focused || this.props.forceSuggestionsWhenBlur) && this.state.items.length > 0}
-                    onInput={this.handleChange}
-                    onCompositionStart={this.handleCompositionStart}
-                    onCompositionUpdate={this.handleCompositionUpdate}
-                    onCompositionEnd={this.handleCompositionEnd}
-                    onKeyDown={this.handleKeyDown}
-                />
-                {(this.props.openWhenEmpty || this.props.value.length >= this.props.requiredCharacters) && this.state.presentationType === 'text' && (
+                <div className='suggestion-box-input-wrapper'>
+                    <QuickInput
+                        ref={this.inputRef}
+                        autoComplete='off'
+                        {...props}
+                        aria-controls='suggestionList'
+                        role='combobox'
+                        {...(this.state.selection && {'aria-activedescendant': `suggestionList_item_${this.state.selection}`})}
+                        aria-autocomplete='list'
+                        aria-expanded={this.state.focused && this.state.items.length > 0 && !this.state.cleared}
+                        onInput={this.handleChange}
+                        onCompositionStart={this.handleCompositionStart}
+                        onCompositionUpdate={this.handleCompositionUpdate}
+                        onCompositionEnd={this.handleCompositionEnd}
+                        onKeyDown={this.handleKeyDown}
+                        className={`${props.className || ''} suggestion-box-input-transparent`}
+                    />
+                </div>
+                {(this.props.openWhenEmpty || this.props.value.length >= this.props.requiredCharacters) && this.state.presentationType === 'text' && (this.state.items.length > 0 || this.props.openWhenEmpty) && (
                     <SuggestionListComponent
-                        open={this.state.focused || this.props.forceSuggestionsWhenBlur}
+                        open={(this.state.focused || this.props.forceSuggestionsWhenBlur) && !this.state.cleared}
                         pretext={this.pretext}
                         position={this.getListPosition(listPosition)}
                         renderDividers={renderDividers}

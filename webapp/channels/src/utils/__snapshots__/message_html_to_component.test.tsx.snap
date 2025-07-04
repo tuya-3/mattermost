@@ -11,6 +11,7 @@ exports[`messageHtmlToComponent At mention 1`] = `
       <Memo(Connect(Component))
         disableGroupHighlight={false}
         disableHighlight={false}
+        displayMode="fullname"
         mentionName="joram"
       >
         @joram
@@ -28,6 +29,7 @@ exports[`messageHtmlToComponent At mention 2`] = `
     <Memo(Connect(Component))
       disableGroupHighlight={false}
       disableHighlight={true}
+      displayMode="fullname"
       mentionName="joram"
     >
       @joram
@@ -44,6 +46,7 @@ exports[`messageHtmlToComponent At mention with group highlight disabled 1`] = `
     <Memo(Connect(Component))
       disableGroupHighlight={false}
       disableHighlight={false}
+      displayMode="fullname"
       mentionName="developers"
     >
       @developers
@@ -60,6 +63,7 @@ exports[`messageHtmlToComponent At mention with group highlight disabled 2`] = `
     <Memo(Connect(Component))
       disableGroupHighlight={true}
       disableHighlight={false}
+      displayMode="fullname"
       mentionName="developers"
     >
       @developers

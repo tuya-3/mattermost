@@ -11,6 +11,20 @@ import AtMention from 'components/at_mention/at_mention';
 import {render} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
+// Mock ProfilePopover to avoid circular dependency
+jest.mock('components/profile_popover', () => {
+    return function MockProfilePopover({children}: {children: React.ReactNode}) {
+        return <div data-testid='profile-popover'>{children}</div>;
+    };
+});
+
+// Mock UserGroupPopover to avoid circular dependency
+jest.mock('components/user_group_popover', () => {
+    return function MockUserGroupPopover({children}: {children: React.ReactNode}) {
+        return <div data-testid='user-group-popover'>{children}</div>;
+    };
+});
+
 /* eslint-disable global-require */
 
 describe('components/AtMention', () => {
