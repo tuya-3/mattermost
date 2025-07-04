@@ -5,15 +5,10 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 import QuickInput from 'components/quick_input';
-import MentionOverlay from 'components/suggestion/mention_overlay/mention_overlay';
-
 import Constants, {A11yCustomEventTypes} from 'utils/constants';
 import * as Keyboard from 'utils/keyboard';
-import {handleMentionKeyDown, handleMentionMouseUp, ensureCaretVisibility, preventMentionExpansion, detectAndFixMentionExpansion} from 'utils/mention_utils';
 import * as UserAgent from 'utils/user_agent';
 import * as Utils from 'utils/utils';
-
-import './suggestion_box_mention_overlay.scss';
 
 const EXECUTE_CURRENT_COMMAND_ITEM_ID = Constants.Integrations.EXECUTE_CURRENT_COMMAND_ITEM_ID;
 const OPEN_COMMAND_IN_MODAL_ITEM_ID = Constants.Integrations.OPEN_COMMAND_IN_MODAL_ITEM_ID;
@@ -218,7 +213,7 @@ export default class SuggestionBox extends React.PureComponent {
         // selection: the term currently selected by the keyboard
         this.state = {
             focused: false,
-            cleared: false,
+            cleared: true,
             matchedPretext: [],
             items: [],
             terms: [],
@@ -228,8 +223,8 @@ export default class SuggestionBox extends React.PureComponent {
             allowDividers: true,
             presentationType: 'text',
             suggestionBoxAlgn: undefined,
-            cursorPosition: 0, // Add cursor position tracking
-            previousText: '', // Track previous text for mention expansion detection
+            cursorPosition: 0,
+            previousText: '',
         };
 
         this.inputRef = React.createRef();
@@ -274,11 +269,19 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     getTextbox = () => {
-        if (!this.inputRef.current) {
+        // Safety checks for inputRef access
+        if (!this.inputRef || !this.inputRef.current) {
             return null;
         }
 
-        return this.inputRef.current;
+        // Additional check to ensure we have a valid DOM element
+        const input = this.inputRef.current;
+        if (input && (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA' || input.focus)) {
+            return input;
+        }
+
+        console.warn('SuggestionBox.getTextbox: inputRef.current is not a valid input element:', input);
+        return null;
     };
 
     handleEmitClearSuggestions = (delay = 0) => {
@@ -352,76 +355,41 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     handleChange = (e) => {
-        
         const textbox = this.getTextbox();
         const currentText = textbox.value;
         const cursorPosition = textbox.selectionStart || 0;
         
         
         
-        // Store the pretext before any modifications
-        const originalPretext = this.pretext;
-        const pretextCandidate = this.props.shouldSearchCompleteText ? currentText.trim() : currentText.substring(0, cursorPosition);
-        
+        // Handle mention processing if HOC provides the handler
+        if (this.props.onMentionProcessing) {
+            const mentionResult = this.props.onMentionProcessing(currentText, cursorPosition);
+            if (mentionResult.changed) {
+                // ARCHITECTURE ISSUE: SuggestionBox should not modify input values directly
+                const correctedPretext = this.props.shouldSearchCompleteText ?
+                    mentionResult.text.trim() :
+                    mentionResult.text.substring(0, mentionResult.cursorPosition);
 
-        const correctedText = detectAndFixMentionExpansion(currentText, this.state.previousText);
+                if (!this.composing && this.pretext !== correctedPretext) {
+                    this.pretext = correctedPretext;
+                    this.handlePretextChanged(correctedPretext);
+                }
 
-        if (correctedText !== currentText) {
-            // Update textbox with corrected text
-            textbox.value = correctedText;
-
-            // Adjust cursor position based on the change
-            const lengthDiff = correctedText.length - currentText.length;
-            const newCursorPosition = Math.max(0, cursorPosition + lengthDiff);
-            textbox.setSelectionRange(newCursorPosition, newCursorPosition);
-
-            // Calculate corrected pretext based on new cursor position
-            const correctedPretext = this.props.shouldSearchCompleteText ? correctedText.trim() : correctedText.substring(0, newCursorPosition);
-
-            // Update state with corrected values
-            this.safeSetState({
-                cursorPosition: newCursorPosition,
-                previousText: correctedText,
-            });
-
-            // Update pretext with corrected text
-            if (!this.composing && this.pretext !== correctedPretext) {
-                this.pretext = correctedPretext;
-                this.handlePretextChanged(correctedPretext);
+                if (this.props.onChange) {
+                    this.props.onChange(e);
+                }
+                return;
             }
-
-            // Create a new event with corrected text for parent components
-            const correctedEvent = {
-                ...e,
-                target: {
-                    ...e.target,
-                    value: correctedText,
-                },
-            };
-
-            if (this.props.onChange) {
-                this.props.onChange(correctedEvent);
-            }
-
-            return;
         }
 
-        // Update state with current values
-        this.safeSetState({
-            cursorPosition: cursorPosition,
-            previousText: currentText,
-        });
+        // Continue with normal suggestion processing
+        const pretextCandidate = this.props.shouldSearchCompleteText ?
+            currentText.trim() :
+            currentText.substring(0, cursorPosition);
 
-        // Update pretext if it has changed and we're not composing
-        const newPretext = this.props.shouldSearchCompleteText ? currentText.trim() : currentText.substring(0, cursorPosition);
-        ('SuggestionBox: newPretext calculated as:', newPretext, 'shouldSearchCompleteText:', this.props.shouldSearchCompleteText);
-        ('SuggestionBox: composing:', this.composing, 'current this.pretext:', this.pretext);
-        if (!this.composing && this.pretext !== newPretext) {
-            ('SuggestionBox: handleChange calling handlePretextChanged with:', newPretext);
-            this.handlePretextChanged(newPretext);
-            this.pretext = newPretext;
-        } else {
-            ('SuggestionBox: skipping handlePretextChanged call');
+        if (!this.composing && this.pretext !== pretextCandidate) {
+            this.pretext = pretextCandidate;
+            this.handlePretextChanged(pretextCandidate);
         }
 
         if (this.props.onChange) {
@@ -430,44 +398,18 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     handleBeforeInput = (e) => {
-        // Skip if composing (CJK input) or if no data
-        if (this.composing || !e.data) {
-            return;
+        
+        
+        // Delegate to HOC if available
+        if (this.props.onBeforeInputMention) {
+            const handled = this.props.onBeforeInputMention(e);
+            if (handled) {
+                return; // HOC handled the event
+            }
         }
-
-        const textbox = this.getTextbox();
-        if (!textbox) {
-            return;
-        }
-
-        const currentValue = textbox.value;
-        const cursorPosition = textbox.selectionStart || 0;
-        const inputChar = e.data;
-
-        // Only handle single character insertion
-        if (e.inputType !== 'insertText' && e.inputType !== 'insertCompositionText') {
-            return;
-        }
-
-        // Use preventMentionExpansion to check if we need to insert a space
-        const result = preventMentionExpansion(currentValue, cursorPosition, inputChar);
-
-        if (result.text !== currentValue) {
-            // Prevent the default input behavior
-            e.preventDefault();
-
-            // Update the textbox value manually
-            textbox.value = result.text;
-            textbox.setSelectionRange(result.cursorPosition, result.cursorPosition);
-
-            // Update cursor position state
-            this.safeSetState({
-                cursorPosition: result.cursorPosition,
-            });
-
-            // Trigger change event to update pretext and suggestions
-            this.handleChange({target: textbox});
-        }
+        
+        // Continue with any other beforeInput processing if needed
+        // (Currently no other processing required for SuggestionBox)
     };
 
     handleCompositionStart = () => {
@@ -703,14 +645,17 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     clear = () => {
-        this.safeSetState({
+        if (this.state.cleared) {
+            return;
+        }
+        this.setState({
             cleared: true,
             matchedPretext: [],
             terms: [],
             items: [],
             components: [],
             selection: '',
-            suggestionBoxAlgn: undefined,
+            // Don't reset suggestionBoxAlgn to preserve positioning
         });
     };
 
@@ -719,21 +664,14 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     handleKeyDown = (e) => {
-        // Update cursor position state
-        setTimeout(() => {
-            const textbox = this.getTextbox();
-            if (textbox) {
-                this.safeSetState({
-                    cursorPosition: textbox.selectionStart || 0,
-                });
+        
+        
+        // Delegate to HOC if available
+        if (this.props.onKeyDownMention) {
+            const handled = this.props.onKeyDownMention(e);
+            if (handled) {
+                return; // HOC handled the event
             }
-        }, 0);
-
-        // Check mention control first
-        if (handleMentionKeyDown(e, this.props.value, this.getTextbox(), this.props.onChange)) {
-            // After mention handling, ensure caret visibility
-            this.ensureCaretVisibility();
-            return;
         }
 
         if ((this.props.openWhenEmpty || this.props.value) && this.hasSuggestions()) {
@@ -794,7 +732,6 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     handleReceivedSuggestions = (suggestions) => {
-        ('SuggestionBox: handleReceivedSuggestions called with:', suggestions);
         let newComponents = [];
         const newPretext = [];
         if (this.props.onSuggestionsReceived) {
@@ -812,24 +749,13 @@ export default class SuggestionBox extends React.PureComponent {
 
         const terms = suggestions.terms;
         const items = suggestions.items;
-        let selection = this.state.selection;
+        let selection = '';
         let selectionIndex = -1;
         
-        // If there are terms and current selection is not valid, select the first one
+        // Always select the first item if terms are available
         if (terms.length > 0) {
-            const currentSelectionIndex = terms.indexOf(selection);
-            if (currentSelectionIndex === -1) {
-                // No valid selection, select the first item
-                selection = terms[0];
-                selectionIndex = 0;
-            } else {
-                // Keep current valid selection
-                selectionIndex = currentSelectionIndex;
-            }
-        } else {
-            // No terms available, clear selection
-            selection = '';
-            selectionIndex = -1;
+            selection = terms[0];
+            selectionIndex = 0;
         }
 
         this.safeSetState({
@@ -841,8 +767,6 @@ export default class SuggestionBox extends React.PureComponent {
             components: newComponents,
             matchedPretext: newPretext,
         });
-
-        ('SuggestionBox: state updated with terms:', terms, 'items:', items, 'cleared:', false);
 
         return {selection, matchedPretext: suggestions.matchedPretext};
     };
@@ -860,7 +784,6 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     nonDebouncedPretextChanged = (pretext, complete = false) => {
-        ('SuggestionBox: nonDebouncedPretextChanged called with:', pretext, 'providers:', this.props.providers.length);
         const {alignWithTextbox} = this.props;
         this.pretext = pretext;
         let handled = false;
@@ -879,12 +802,11 @@ export default class SuggestionBox extends React.PureComponent {
         }
         
         for (const provider of this.props.providers) {
-            ('SuggestionBox: trying provider', provider.constructor.name, 'with pretext:', pretext);
             handled = provider.handlePretextChanged(pretext, callback) || handled;
-            ('SuggestionBox: provider', provider.constructor.name, 'handled:', handled);
 
             if (handled) {
-                if (!this.state.suggestionBoxAlgn && ['@', ':', '~', '/'].includes(provider.triggerCharacter)) {
+                // Only set suggestionBoxAlgn if it's not already set and provider has a trigger character
+                if (!this.state.suggestionBoxAlgn && provider.triggerCharacter && ['@', ':', '~', '/'].includes(provider.triggerCharacter)) {
                     const char = provider.triggerCharacter;
                     const pxToSubstract = Utils.getPxToSubstract(char);
 
@@ -904,7 +826,6 @@ export default class SuggestionBox extends React.PureComponent {
             }
         }
         if (!handled) {
-            ('SuggestionBox: no provider handled pretext, clearing');
             this.clear();
         }
     };
@@ -961,38 +882,22 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     /**
-     * Mouse up event handler for mention control
+     * Mouse up event handler - mention processing removed
      */
     handleMouseUp = (e) => {
-        // Update cursor position state
-        setTimeout(() => {
-            const textbox = this.getTextbox();
-            if (textbox) {
-                this.safeSetState({
-                    cursorPosition: textbox.selectionStart || 0,
-                });
-            }
-        }, 0);
-
-        // Handle mention control on mouse up
-        handleMentionMouseUp(this.props.value, this.getTextbox());
-
-        // Force caret visibility after mouse interactions
-        this.ensureCaretVisibility();
+        
+        
+        // Delegate to HOC if available
+        if (this.props.onMouseUpMention) {
+            this.props.onMouseUpMention(e);
+        }
 
         if (this.props.onMouseUp) {
             this.props.onMouseUp(e);
         }
     };
 
-    /**
-     * Ensure caret visibility especially after mention interactions
-     */
-    ensureCaretVisibility = () => {
-        const textbox = this.getTextbox();
-
-        ensureCaretVisibility(textbox);
-    };
+    
 
     render() {
         const {
@@ -1047,11 +952,6 @@ export default class SuggestionBox extends React.PureComponent {
                     className='sr-only'
                 />
                 <div className='suggestion-box-input-wrapper'>
-                    <MentionOverlay
-                        value={this.props.value}
-                        cursorPosition={this.state.cursorPosition}
-                        showCursor={this.state.focused}
-                    />
                     <QuickInput
                         ref={this.inputRef}
                         autoComplete='off'
@@ -1093,7 +993,6 @@ export default class SuggestionBox extends React.PureComponent {
                         onLoseVisibility={this.blur}
                     />
                 )}
-                {('SuggestionBox render: showList condition check - openWhenEmpty:', this.props.openWhenEmpty, 'value.length:', this.props.value.length, 'requiredCharacters:', this.props.requiredCharacters, 'presentationType:', this.state.presentationType, 'items.length:', this.state.items.length, 'focused:', this.state.focused)}
                 {(this.props.openWhenEmpty || this.props.value.length >= this.props.requiredCharacters) && this.state.presentationType === 'date' &&
                     <SuggestionDateComponent
                         items={this.state.items}

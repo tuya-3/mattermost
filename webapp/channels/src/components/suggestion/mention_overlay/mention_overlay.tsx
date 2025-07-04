@@ -5,6 +5,9 @@ import PropTypes from 'prop-types';
 import React, {useRef, useEffect, useState} from 'react';
 import type {ReactNode} from 'react';
 
+import {displayUsername} from 'mattermost-redux/utils/user_utils';
+import type {UserProfile} from '@mattermost/types/users';
+
 import {getMentionRanges} from 'utils/mention_utils';
 import type {MentionRange} from 'utils/mention_utils';
 
@@ -28,6 +31,9 @@ export type Props = {
     className?: string;
     cursorPosition?: number;
     showCursor?: boolean;
+    usersByUsername?: Record<string, UserProfile>;
+    teammateNameDisplay?: string;
+    currentUserId?: string;
 };
 
 type ParsedMentionPart = {
@@ -37,15 +43,21 @@ type ParsedMentionPart = {
 };
 
 /**
- * MentionOverlay renders text with highlighted mentions using AtMention components.
- * This component parses the input text and replaces @mentions with interactive AtMention components
+ * MentionOverlay renders text with highlighted mentions using full name display.
+ * This component parses the input text and replaces @mentions with full names
  * while preserving other text as-is.
- *
- * Based on the patterns established in at_mention_provider for consistent mention handling.
  */
 const MentionOverlay: React.NamedExoticComponent<Props> & {
     propTypes?: any;
-} = React.memo<Props>(({value, className, cursorPosition, showCursor = false}) => {
+} = React.memo<Props>(({
+    value, 
+    className, 
+    cursorPosition, 
+    showCursor = false, 
+    usersByUsername = {},
+    teammateNameDisplay = 'username',
+    currentUserId = ''
+}) => {
     // React Hooks must be called before any conditional returns
     const overlayRef = useRef<HTMLDivElement>(null);
     const [actualCursorLeft, setActualCursorLeft] = useState<number>(0);
@@ -74,6 +86,8 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                     currentParsedParts,
                     cursorPosition,
                     overlayMentions,
+                    usersByUsername,
+                    teammateNameDisplay,
                 );
 
                 setActualCursorLeft(left);
@@ -136,6 +150,12 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
     const renderParts = (parts: ParsedMentionPart[]): ReactNode[] => {
         return parts.map((part, index) => {
             if (part.type === 'mention') {
+                // Get user information for display name
+                const user = usersByUsername[part.content];
+                const displayName = user ? 
+                    displayUsername(user, teammateNameDisplay) : 
+                    part.content;
+
                 return (
                     <span
                         key={`mention-${part.range?.start ?? index}`}
@@ -145,12 +165,13 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                             padding: '2px 4px',
                             margin: '0',
                             border: 'none',
-                            background: 'rgba(255, 212, 0, 0.2)',
+                            background: 'rgba(var(--mention-color-rgb, 0, 115, 230), 0.1)',
                             borderRadius: '3px',
-                            fontWeight: 'bold',
+                            color: 'var(--mention-color, #0073e6)',
+                            fontWeight: '600',
                         }}
                     >
-                        {`@${part.content}`}
+                        {`@${displayName}`}
                     </span>
                 );
             }
@@ -235,17 +256,24 @@ const createMeasurementDiv = (overlayWidth: number): HTMLDivElement => {
 /**
  * Creates a mention span element for measurement
  */
-const createMentionSpan = (content: string): HTMLSpanElement => {
+const createMentionSpan = (content: string, usersByUsername: Record<string, UserProfile>, teammateNameDisplay: string): HTMLSpanElement => {
     const mentionSpan = document.createElement('span');
     mentionSpan.className = 'mention-highlight';
     mentionSpan.style.display = 'inline';
     mentionSpan.style.padding = '2px 4px';
     mentionSpan.style.margin = '0';
     mentionSpan.style.border = 'none';
-    mentionSpan.style.background = 'rgba(255, 212, 0, 0.2)';
+    mentionSpan.style.background = 'rgba(var(--mention-color-rgb, 0, 115, 230), 0.1)';
     mentionSpan.style.borderRadius = '3px';
-    mentionSpan.style.fontWeight = 'bold';
-    mentionSpan.textContent = content;
+    mentionSpan.style.color = 'var(--mention-color, #0073e6)';
+    mentionSpan.style.fontWeight = '600';
+    
+    // Extract username from @username format
+    const username = content.startsWith('@') ? content.substring(1) : content;
+    const user = usersByUsername[username];
+    const displayName = user ? displayUsername(user, teammateNameDisplay) : username;
+    
+    mentionSpan.textContent = `@${displayName}`;
 
     return mentionSpan;
 };
@@ -258,6 +286,8 @@ const calculateCursorPosition = (
     currentParsedParts: ParsedMentionPart[],
     cursorPosition: number,
     overlayMentions: NodeListOf<Element>,
+    usersByUsername: Record<string, UserProfile>,
+    teammateNameDisplay: string,
 ): { left: number; top: number } => {
     const tempDiv = createMeasurementDiv(overlayWidth);
 
@@ -277,7 +307,7 @@ const calculateCursorPosition = (
                 // Cursor is within or at end of this mention
                 if (cursorPosition > inputPosition) {
                     // Create a mention element to measure its actual width
-                    const mentionSpan = createMentionSpan(`@${part.content}`);
+                    const mentionSpan = createMentionSpan(`@${part.content}`, usersByUsername, teammateNameDisplay);
                     tempDiv.appendChild(mentionSpan);
                 }
                 foundCursor = true;
@@ -285,7 +315,7 @@ const calculateCursorPosition = (
             }
 
             // Add the full mention
-            const mentionSpan = createMentionSpan(`@${part.content}`);
+            const mentionSpan = createMentionSpan(`@${part.content}`, usersByUsername, teammateNameDisplay);
             tempDiv.appendChild(mentionSpan);
             inputPosition += originalMentionLength;
         } else {
