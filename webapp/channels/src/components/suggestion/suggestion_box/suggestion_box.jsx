@@ -5,6 +5,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 
 import QuickInput from 'components/quick_input';
+
 import Constants, {A11yCustomEventTypes} from 'utils/constants';
 import * as Keyboard from 'utils/keyboard';
 import * as UserAgent from 'utils/user_agent';
@@ -336,15 +337,9 @@ export default class SuggestionBox extends React.PureComponent {
             this.handlePretextChanged(pretext);
         }
 
-        this.pretext = pretext;
-
         if (this.props.onChange) {
             this.props.onChange(e);
         }
-    };
-
-    handleBeforeInput = (e) => {
-        // no-op for now
     };
 
     handleCompositionStart = () => {
@@ -401,14 +396,14 @@ export default class SuggestionBox extends React.PureComponent {
         }
 
         const suffix = text.substring(caret);
+
         const newValue = prefix + term + ' ' + suffix;
+        textbox.value = newValue;
 
         if (this.props.onChange) {
             // fake an input event to send back to parent components
             const e = {
-                target: {
-                    value: newValue,
-                },
+                target: textbox,
             };
 
             // don't call handleChange or we'll get into an event loop
@@ -418,7 +413,7 @@ export default class SuggestionBox extends React.PureComponent {
         // set the caret position after the next rendering
         window.requestAnimationFrame(() => {
             if (textbox.value === newValue) {
-                Utils.setCaretPosition(textbox, (prefix + term + ' ').length);
+                Utils.setCaretPosition(textbox, prefix.length + term.length + 1);
             }
         });
     };
@@ -430,9 +425,7 @@ export default class SuggestionBox extends React.PureComponent {
         if (this.props.onChange) {
             // fake an input event to send back to parent components
             const e = {
-                target: {
-                    value: term,
-                },
+                target: textbox,
             };
 
             // don't call handleChange or we'll get into an event loop
@@ -533,18 +526,13 @@ export default class SuggestionBox extends React.PureComponent {
         let selectionIndex = this.state.terms.indexOf(this.state.selection);
 
         if (selectionIndex === -1) {
-            // If no selection exists, start with appropriate initial selection based on delta
-            if (this.state.terms.length > 0) {
-                selectionIndex = delta > 0 ? 0 : this.state.terms.length - 1;
-            } else {
-                this.setState({
-                    selection: '',
-                });
-                return;
-            }
-        } else {
-            selectionIndex += delta;
+            this.setState({
+                selection: '',
+            });
+            return;
         }
+
+        selectionIndex += delta;
 
         if (selectionIndex < 0) {
             selectionIndex = 0;
@@ -568,18 +556,17 @@ export default class SuggestionBox extends React.PureComponent {
     };
 
     clear = () => {
-        if (this.state.cleared) {
-            return;
+        if (!this.state.cleared) {
+            this.setState({
+                cleared: true,
+                matchedPretext: [],
+                terms: [],
+                items: [],
+                components: [],
+                selection: '',
+                suggestionBoxAlgn: undefined,
+            });
         }
-        this.setState({
-            cleared: true,
-            matchedPretext: [],
-            terms: [],
-            items: [],
-            components: [],
-            selection: '',
-            suggestionBoxAlgn: undefined,
-        });
     };
 
     hasSuggestions = () => {
@@ -663,14 +650,13 @@ export default class SuggestionBox extends React.PureComponent {
         const terms = suggestions.terms;
         const items = suggestions.items;
         let selection = this.state.selection;
-
-        if (terms.length > 0) {
-            // Select the first available item if no selection exists or if it is unavailable
-            if (!selection || !terms.includes(selection)) {
+        const selectionIndex = terms.indexOf(selection);
+        if (selectionIndex !== this.state.selectionIndex) {
+            if (terms.length > 0) {
                 selection = terms[0];
+            } else if (this.state.selection) {
+                selection = '';
             }
-        } else {
-            selection = '';
         }
 
         this.setState({
@@ -705,7 +691,6 @@ export default class SuggestionBox extends React.PureComponent {
         if (complete) {
             callback = this.makeHandleReceivedSuggestionsAndComplete();
         }
-        
         for (const provider of this.props.providers) {
             handled = provider.handlePretextChanged(pretext, callback) || handled;
 
@@ -794,8 +779,6 @@ export default class SuggestionBox extends React.PureComponent {
         }
     };
 
-    
-
     render() {
         const {
             dateComponent,
@@ -859,7 +842,6 @@ export default class SuggestionBox extends React.PureComponent {
                         aria-autocomplete='list'
                         aria-expanded={this.state.focused && this.state.items.length > 0 && !this.state.cleared}
                         onInput={this.handleChange}
-                        onBeforeInput={this.handleBeforeInput}
                         onCompositionStart={this.handleCompositionStart}
                         onCompositionUpdate={this.handleCompositionUpdate}
                         onCompositionEnd={this.handleCompositionEnd}
