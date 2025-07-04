@@ -162,7 +162,6 @@ export default class SuggestionBox extends React.PureComponent {
         maxLength: PropTypes.string,
         delayInputUpdate: PropTypes.bool,
         spellCheck: PropTypes.string,
-        onMouseUp: PropTypes.func,
         onKeyUp: PropTypes.func,
         onHeightChange: PropTypes.func,
         onWidthChange: PropTypes.func,
@@ -770,15 +769,6 @@ export default class SuggestionBox extends React.PureComponent {
         return listPosition === 'bottom' && this.state.suggestionBoxAlgn.placementShift ? 'top' : listPosition;
     };
 
-    /**
-     * Mouse up event handler
-     */
-    handleMouseUp = (e) => {
-        if (this.props.onMouseUp) {
-            this.props.onMouseUp(e);
-        }
-    };
-
     render() {
         const {
             dateComponent,
@@ -825,12 +815,6 @@ export default class SuggestionBox extends React.PureComponent {
                 ref={this.setContainerRef}
                 className={this.props.containerClass}
             >
-                <div
-                    ref={this.suggestionReadOut}
-                    aria-live='polite'
-                    role='alert'
-                    className='sr-only'
-                />
                 <div className='suggestion-box-input-wrapper'>
                     <QuickInput
                         ref={this.inputRef}
@@ -846,13 +830,11 @@ export default class SuggestionBox extends React.PureComponent {
                         onCompositionUpdate={this.handleCompositionUpdate}
                         onCompositionEnd={this.handleCompositionEnd}
                         onKeyDown={this.handleKeyDown}
-                        onMouseUp={this.handleMouseUp}
                         className={`${props.className || ''} suggestion-box-input-transparent`}
                     />
                 </div>
                 {(this.props.openWhenEmpty || this.props.value.length >= this.props.requiredCharacters) && this.state.presentationType === 'text' && (this.state.items.length > 0 || this.props.openWhenEmpty) && (
                     <SuggestionListComponent
-                        ariaLiveRef={this.suggestionReadOut}
                         open={(this.state.focused || this.props.forceSuggestionsWhenBlur) && !this.state.cleared}
                         pretext={this.pretext}
                         position={this.getListPosition(listPosition)}
