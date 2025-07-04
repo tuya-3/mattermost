@@ -10,7 +10,23 @@ import MentionOverlay from './mention_overlay';
 
 jest.mock('components/at_mention', () => {
     return function MockAtMention({mentionName}: {mentionName: string}) {
-        return <span data-testid={`mention-${mentionName}`}>{'@'}{mentionName}</span>;
+        return (
+            <span
+                data-testid={`mention-${mentionName}`}
+                className='mention-highlight'
+                style={{
+                    display: 'inline',
+                    padding: '2px 4px',
+                    margin: '0',
+                    border: 'none',
+                    background: 'rgba(255, 212, 0, 0.2)',
+                    borderRadius: '3px',
+                    fontWeight: 'bold',
+                }}
+            >
+                {'@'}{mentionName}
+            </span>
+        );
     };
 });
 

@@ -24,37 +24,51 @@ exports[`components/search_bar/SearchBar should match snapshot with search 1`] =
         class="w-full"
       >
         <div
-          class="input-wrapper"
+          aria-live="polite"
+          class="sr-only"
+          role="alert"
+        />
+        <div
+          class="suggestion-box-input-wrapper"
         >
-          <input
-            aria-autocomplete="list"
-            aria-controls="suggestionList"
-            aria-describedby="searchbar-help-popup"
-            aria-expanded="false"
-            aria-label="Search"
-            autocomplete="off"
-            class="search-bar form-control a11y__region"
-            data-a11y-sort-order="9"
-            id="searchBox"
-            placeholder="Search"
-            role="combobox"
-            tabindex="0"
-            type="search"
-            value="test"
-          />
-          <button
-            class="input-clear visible"
-            data-testid="input-clear"
+          <div
+            class="suggestion-box-mention-overlay "
           >
-            <span
-              aria-hidden="true"
-              class="input-clear-x"
+            test
+          </div>
+          <div
+            class="input-wrapper"
+          >
+            <input
+              aria-autocomplete="list"
+              aria-controls="suggestionList"
+              aria-describedby="searchbar-help-popup"
+              aria-expanded="false"
+              aria-label="Search"
+              autocomplete="off"
+              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              data-a11y-sort-order="9"
+              id="searchBox"
+              placeholder="Search"
+              role="combobox"
+              tabindex="0"
+              type="search"
+              value="test"
+            />
+            <button
+              class="input-clear visible"
+              data-testid="input-clear"
             >
-              <i
-                class="icon icon-close-circle"
-              />
-            </span>
-          </button>
+              <span
+                aria-hidden="true"
+                class="input-clear-x"
+              >
+                <i
+                  class="icon icon-close-circle"
+                />
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </form>
@@ -94,37 +108,51 @@ exports[`components/search_bar/SearchBar should match snapshot with search, with
         class="w-full"
       >
         <div
-          class="input-wrapper"
+          aria-live="polite"
+          class="sr-only"
+          role="alert"
+        />
+        <div
+          class="suggestion-box-input-wrapper"
         >
-          <input
-            aria-autocomplete="list"
-            aria-controls="suggestionList"
-            aria-describedby="searchbar-help-popup"
-            aria-expanded="false"
-            aria-label="Search"
-            autocomplete="off"
-            class="search-bar form-control a11y__region"
-            data-a11y-sort-order="9"
-            id="searchBox"
-            placeholder="Search"
-            role="combobox"
-            tabindex="0"
-            type="search"
-            value="test"
-          />
-          <button
-            class="input-clear visible"
-            data-testid="input-clear"
+          <div
+            class="suggestion-box-mention-overlay "
           >
-            <span
-              aria-hidden="true"
-              class="input-clear-x"
+            test
+          </div>
+          <div
+            class="input-wrapper"
+          >
+            <input
+              aria-autocomplete="list"
+              aria-controls="suggestionList"
+              aria-describedby="searchbar-help-popup"
+              aria-expanded="false"
+              aria-label="Search"
+              autocomplete="off"
+              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              data-a11y-sort-order="9"
+              id="searchBox"
+              placeholder="Search"
+              role="combobox"
+              tabindex="0"
+              type="search"
+              value="test"
+            />
+            <button
+              class="input-clear visible"
+              data-testid="input-clear"
             >
-              <i
-                class="icon icon-close-circle"
-              />
-            </span>
-          </button>
+              <span
+                aria-hidden="true"
+                class="input-clear-x"
+              >
+                <i
+                  class="icon icon-close-circle"
+                />
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </form>
@@ -156,25 +184,34 @@ exports[`components/search_bar/SearchBar should match snapshot without search 1`
         class="w-full"
       >
         <div
-          class="input-wrapper"
+          aria-live="polite"
+          class="sr-only"
+          role="alert"
+        />
+        <div
+          class="suggestion-box-input-wrapper"
         >
-          <input
-            aria-autocomplete="list"
-            aria-controls="suggestionList"
-            aria-describedby="searchbar-help-popup"
-            aria-expanded="false"
-            aria-label="Search"
-            autocomplete="off"
-            class="search-bar form-control a11y__region"
-            data-a11y-sort-order="9"
-            id="searchBox"
-            placeholder="Search"
-            role="combobox"
-            tabindex="0"
-            type="search"
-            value=""
-          />
-          
+          <div
+            class="input-wrapper"
+          >
+            <input
+              aria-autocomplete="list"
+              aria-controls="suggestionList"
+              aria-describedby="searchbar-help-popup"
+              aria-expanded="false"
+              aria-label="Search"
+              autocomplete="off"
+              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              data-a11y-sort-order="9"
+              id="searchBox"
+              placeholder="Search"
+              role="combobox"
+              tabindex="0"
+              type="search"
+              value=""
+            />
+            
+          </div>
         </div>
       </div>
     </form>
@@ -214,25 +251,34 @@ exports[`components/search_bar/SearchBar should match snapshot without search, w
         class="w-full"
       >
         <div
-          class="input-wrapper"
+          aria-live="polite"
+          class="sr-only"
+          role="alert"
+        />
+        <div
+          class="suggestion-box-input-wrapper"
         >
-          <input
-            aria-autocomplete="list"
-            aria-controls="suggestionList"
-            aria-describedby="searchbar-help-popup"
-            aria-expanded="false"
-            aria-label="Search"
-            autocomplete="off"
-            class="search-bar form-control a11y__region"
-            data-a11y-sort-order="9"
-            id="searchBox"
-            placeholder="Search"
-            role="combobox"
-            tabindex="0"
-            type="search"
-            value=""
-          />
-          
+          <div
+            class="input-wrapper"
+          >
+            <input
+              aria-autocomplete="list"
+              aria-controls="suggestionList"
+              aria-describedby="searchbar-help-popup"
+              aria-expanded="false"
+              aria-label="Search"
+              autocomplete="off"
+              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              data-a11y-sort-order="9"
+              id="searchBox"
+              placeholder="Search"
+              role="combobox"
+              tabindex="0"
+              type="search"
+              value=""
+            />
+            
+          </div>
         </div>
       </div>
     </form>
@@ -264,25 +310,34 @@ exports[`components/search_bar/SearchBar should match snapshot without search, w
         class="w-full"
       >
         <div
-          class="input-wrapper"
+          aria-live="polite"
+          class="sr-only"
+          role="alert"
+        />
+        <div
+          class="suggestion-box-input-wrapper"
         >
-          <input
-            aria-autocomplete="list"
-            aria-controls="suggestionList"
-            aria-describedby="searchbar-help-popup"
-            aria-expanded="false"
-            aria-label="Search"
-            autocomplete="off"
-            class="search-bar form-control a11y__region"
-            data-a11y-sort-order="9"
-            id="searchBox"
-            placeholder="Search"
-            role="combobox"
-            tabindex="0"
-            type="search"
-            value=""
-          />
-          
+          <div
+            class="input-wrapper"
+          >
+            <input
+              aria-autocomplete="list"
+              aria-controls="suggestionList"
+              aria-describedby="searchbar-help-popup"
+              aria-expanded="false"
+              aria-label="Search"
+              autocomplete="off"
+              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              data-a11y-sort-order="9"
+              id="searchBox"
+              placeholder="Search"
+              role="combobox"
+              tabindex="0"
+              type="search"
+              value=""
+            />
+            
+          </div>
         </div>
       </div>
     </form>

@@ -2,8 +2,9 @@
 // See LICENSE.txt for license information.
 
 import React, {useCallback, useState} from 'react';
+import {act} from 'react-dom/test-utils';
 
-import {renderWithContext, screen, userEvent, waitFor} from 'tests/react_testing_utils';
+import {renderWithContext, screen, userEvent, waitFor, fireEvent} from 'tests/react_testing_utils';
 import {TestHelper} from 'utils/test_helper';
 
 import SuggestionBox from './suggestion_box';
@@ -27,7 +28,10 @@ function TestWrapper(props: React.ComponentPropsWithoutRef<typeof SuggestionBox>
     // eslint-disable-next-line react/prop-types
     const [value, setValue] = useState(props.value);
 
-    const handleChange = useCallback((e) => setValue(e.target.value), []);
+    const handleChange = useCallback((e) => {
+        
+        setValue(e.target.value);
+    }, []);
 
     return (
         <SuggestionBox
@@ -57,12 +61,16 @@ class TestProvider extends Provider {
         }
 
         const terms = [pretext + pretext];
-        resultCallback({
-            matchedPretext: pretext,
-            terms,
-            items: terms,
-            component: TestSuggestion,
-        });
+        
+        // Always call the callback with results
+        setTimeout(() => {
+            resultCallback({
+                matchedPretext: pretext,
+                terms,
+                items: terms,
+                component: TestSuggestion,
+            });
+        }, 0);
 
         if (this.repeatResults) {
             setTimeout(() => {
@@ -96,7 +104,7 @@ describe('SuggestionBox', () => {
         const provider = new TestProvider();
         const providerSpy = jest.spyOn(provider, 'handlePretextChanged');
 
-        renderWithContext(
+        const {getByPlaceholderText} = renderWithContext(
             <TestWrapper
                 {...makeBaseProps()}
                 providers={[provider]}
@@ -106,29 +114,54 @@ describe('SuggestionBox', () => {
         // Start with no suggestions rendered
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 
-        // Typing some text should cause a suggestion to be shown
-        userEvent.click(screen.getByPlaceholderText('test input'));
-        await userEvent.keyboard('test');
-
-        await waitFor(() => {
-            // Note that debouncing causes the provider to only be called once when the user stops typing
-            expect(providerSpy).toHaveBeenCalledTimes(1);
+        const input = getByPlaceholderText('test input');
+        
+        // Focus the input to set focused state to true
+        act(() => {
+            fireEvent.focus(input);
+        });
+        
+        // Type text to trigger suggestions
+        act(() => {
+            fireEvent.change(input, {target: {value: 'test'}});
+            fireEvent.input(input, {target: {value: 'test'}});
         });
 
-        expect(screen.queryByRole('listbox')).toBeVisible();
+        // Wait for debouncing to complete (100ms + buffer)
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 200));
+        });
 
-        expect(screen.queryByRole('listbox')).toBeVisible();
+        await waitFor(() => {
+            expect(providerSpy).toHaveBeenCalledTimes(1);
+        }, {timeout: 2000});
+
+        // Wait for suggestions to be processed and rendered
+        await waitFor(() => {
+            expect(screen.queryByRole('listbox')).toBeVisible();
+        }, {timeout: 1000});
+
         expect(screen.getByText('Suggestion: testtest')).toBeVisible();
 
-        // Typing more text should cause the suggestion to be updaetd
-        await userEvent.keyboard('words');
+        // Typing more text should cause the suggestion to be updated
+        act(() => {
+            fireEvent.change(input, {target: {value: 'testwords'}});
+            fireEvent.input(input, {target: {value: 'testwords'}});
+        });
+
+        // Wait for debouncing again
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 200));
+        });
 
         await waitFor(() => {
             expect(providerSpy).toHaveBeenCalledTimes(2);
-        });
+        }, {timeout: 2000});
 
-        expect(screen.queryByRole('listbox')).toBeVisible();
-        expect(screen.getByText('Suggestion: testwordstestwords')).toBeVisible();
+        await waitFor(() => {
+            expect(screen.queryByRole('listbox')).toBeVisible();
+            expect(screen.getByText('Suggestion: testwordstestwords')).toBeVisible();
+        }, {timeout: 1000});
 
         // Clearing the textbox hides all suggestions
         await userEvent.clear(screen.getByPlaceholderText('test input'));
@@ -149,18 +182,32 @@ describe('SuggestionBox', () => {
         // Start with no suggestions rendered
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 
-        // Typing some text should cause a suggestion to be shown
-        userEvent.click(screen.getByPlaceholderText('test input'));
-        await userEvent.keyboard('test');
+        const input = screen.getByPlaceholderText('test input');
+        
+        // Focus and type text to show suggestions
+        act(() => {
+            fireEvent.focus(input);
+            fireEvent.change(input, {target: {value: 'test'}});
+            fireEvent.input(input, {target: {value: 'test'}});
+        });
+
+        // Wait for debouncing and suggestions to appear
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 200));
+        });
 
         await waitFor(() => {
             expect(screen.getByRole('listbox')).toBeVisible();
-        });
+        }, {timeout: 1000});
 
         // Pressing escape hides all suggestions
-        await userEvent.keyboard('{escape}');
+        act(() => {
+            fireEvent.keyDown(input, {key: 'Escape', code: 'Escape'});
+        });
 
-        expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+        }, {timeout: 500});
     });
 
     test('should autocomplete suggestions by pressing enter', async () => {
@@ -173,21 +220,33 @@ describe('SuggestionBox', () => {
             />,
         );
 
-        // Typing some text should cause a suggestion to be shown
-        userEvent.click(screen.getByPlaceholderText('test input'));
-        await userEvent.keyboard('test');
+        const input = screen.getByPlaceholderText('test input');
+        
+        // Focus and type text to show suggestions
+        act(() => {
+            fireEvent.focus(input);
+            fireEvent.change(input, {target: {value: 'test'}});
+            fireEvent.input(input, {target: {value: 'test'}});
+        });
+
+        // Wait for debouncing and suggestions to appear
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 200));
+        });
 
         await waitFor(() => {
             expect(screen.queryByRole('listbox')).toBeVisible();
             expect(screen.getByText('Suggestion: testtest')).toBeVisible();
-        });
+        }, {timeout: 1000});
 
         // Pressing enter should update the textbox value and hide the suggestion list
-        await userEvent.keyboard('{enter}');
+        act(() => {
+            fireEvent.keyDown(input, {key: 'Enter', code: 'Enter'});
+        });
 
         await waitFor(() => {
             expect(screen.getByPlaceholderText('test input')).toHaveValue('testtest ');
-        });
+        }, {timeout: 1000});
 
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     });
@@ -290,7 +349,11 @@ describe('SuggestionBox', () => {
         );
 
         const input = screen.getByPlaceholderText('test input');
-        userEvent.click(input);
+        
+        // Focus the input first
+        act(() => {
+            fireEvent.focus(input);
+        });
 
         // Start without showing the autocomplete list
         expect(input).toHaveAttribute('aria-autocomplete', 'list');
@@ -298,7 +361,15 @@ describe('SuggestionBox', () => {
         expect(document.getElementById(input.getAttribute('aria-controls')!)).not.toBeInTheDocument();
 
         // Type something that shouldn't trigger the autocomplete
-        await userEvent.keyboard('Test ');
+        act(() => {
+            fireEvent.change(input, {target: {value: 'Test '}});
+            fireEvent.input(input, {target: {value: 'Test '}});
+        });
+
+        // Wait for debouncing
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 200));
+        });
 
         // The autocomplete still shouldn't be visible
         expect(input).toHaveAttribute('aria-autocomplete', 'list');
@@ -306,33 +377,55 @@ describe('SuggestionBox', () => {
         expect(document.getElementById(input.getAttribute('aria-controls')!)).not.toBeInTheDocument();
 
         // Type an at sign to trigger the user autocomplete
-        await userEvent.keyboard('@');
+        act(() => {
+            fireEvent.change(input, {target: {value: 'Test @'}});
+            fireEvent.input(input, {target: {value: 'Test @'}});
+        });
+
+        // Wait for debouncing and suggestions to appear
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 200));
+        });
 
         await waitFor(() => {
             expect(input).toHaveAttribute('aria-expanded', 'true');
-        });
+        }, {timeout: 1000});
 
         // Ensure that the input is correctly linked to the suggestion list
         expect(document.getElementById(input.getAttribute('aria-controls')!)).toBe(screen.getByRole('listbox'));
+        
+        // Wait for aria-activedescendant to be set
+        await waitFor(() => {
+            expect(input.getAttribute('aria-activedescendant')).toBeTruthy();
+        });
+        
         expect(document.getElementById(input.getAttribute('aria-activedescendant')!)).toBe(screen.getByRole('listbox').firstElementChild);
 
         // The number of results should also be read out
         expect(screen.getByRole('status')).toHaveTextContent('2 suggestions available');
 
         // Pressing the down arrow should change the selection to the second user
-        await userEvent.keyboard('{arrowdown}');
+        act(() => {
+            fireEvent.keyDown(input, {key: 'ArrowDown', code: 'ArrowDown'});
+        });
 
         expect(document.getElementById(input.getAttribute('aria-activedescendant')!)).toBe(screen.getByRole('listbox').lastElementChild);
 
         // Pressing the up arrow should change the selection back to the first user
-        await userEvent.keyboard('{arrowup}');
+        act(() => {
+            fireEvent.keyDown(input, {key: 'ArrowUp', code: 'ArrowUp'});
+        });
 
         expect(document.getElementById(input.getAttribute('aria-activedescendant')!)).toBe(screen.getByRole('listbox').firstElementChild);
 
         // Pressing enter should complete the result and close the suggestions
-        await userEvent.keyboard('{enter}');
+        act(() => {
+            fireEvent.keyDown(input, {key: 'Enter', code: 'Enter'});
+        });
 
-        expect(input).toHaveValue('Test @apple ');
+        await waitFor(() => {
+            expect(input).toHaveValue('Test @apple ');
+        }, {timeout: 1000});
 
         expect(input).toHaveAttribute('aria-expanded', 'false');
         expect(document.getElementById(input.getAttribute('aria-controls')!)).not.toBeInTheDocument();

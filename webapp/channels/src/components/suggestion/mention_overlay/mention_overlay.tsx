@@ -5,8 +5,6 @@ import PropTypes from 'prop-types';
 import React, {useRef, useEffect, useState} from 'react';
 import type {ReactNode} from 'react';
 
-import AtMention from 'components/at_mention';
-
 import {getMentionRanges} from 'utils/mention_utils';
 import type {MentionRange} from 'utils/mention_utils';
 
@@ -68,7 +66,7 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                 const currentParsedParts = parseMentionText(stringValue);
 
                 // Get overlay mentions for content replacement
-                const overlayMentions = overlayRef.current.querySelectorAll('button.mention--highlight');
+                const overlayMentions = overlayRef.current.querySelectorAll('.mention-highlight');
 
                 // Calculate cursor position using helper function
                 const {left, top} = calculateCursorPosition(
@@ -139,25 +137,21 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
         return parts.map((part, index) => {
             if (part.type === 'mention') {
                 return (
-                    <AtMention
+                    <span
                         key={`mention-${part.range?.start ?? index}`}
-                        mentionName={part.content}
-                        displayMode='fullname'
+                        className='mention-highlight'
+                        style={{
+                            display: 'inline',
+                            padding: '2px 4px',
+                            margin: '0',
+                            border: 'none',
+                            background: 'rgba(255, 212, 0, 0.2)',
+                            borderRadius: '3px',
+                            fontWeight: 'bold',
+                        }}
                     >
-                        <button
-                            className='style--none mention--highlight'
-                            style={{
-                                display: 'inline',
-                                padding: '0',
-                                margin: '0',
-                                border: 'none',
-                                background: 'rgba(255, 212, 0, 0.2)',
-                                cursor: 'default',
-                            }}
-                        >
-                            {`@${part.content}`}
-                        </button>
-                    </AtMention>
+                        {`@${part.content}`}
+                    </span>
                 );
             }
 
@@ -239,17 +233,18 @@ const createMeasurementDiv = (overlayWidth: number): HTMLDivElement => {
 };
 
 /**
- * Creates a mention button element for measurement
+ * Creates a mention span element for measurement
  */
-const createMentionButton = (content: string): HTMLButtonElement => {
-    const mentionSpan = document.createElement('button');
-    mentionSpan.className = 'style--none mention--highlight';
+const createMentionSpan = (content: string): HTMLSpanElement => {
+    const mentionSpan = document.createElement('span');
+    mentionSpan.className = 'mention-highlight';
     mentionSpan.style.display = 'inline';
-    mentionSpan.style.padding = '0';
+    mentionSpan.style.padding = '2px 4px';
     mentionSpan.style.margin = '0';
     mentionSpan.style.border = 'none';
-    mentionSpan.style.background = 'transparent';
-    mentionSpan.style.cursor = 'default';
+    mentionSpan.style.background = 'rgba(255, 212, 0, 0.2)';
+    mentionSpan.style.borderRadius = '3px';
+    mentionSpan.style.fontWeight = 'bold';
     mentionSpan.textContent = content;
 
     return mentionSpan;
@@ -282,7 +277,7 @@ const calculateCursorPosition = (
                 // Cursor is within or at end of this mention
                 if (cursorPosition > inputPosition) {
                     // Create a mention element to measure its actual width
-                    const mentionSpan = createMentionButton(`@${part.content}`);
+                    const mentionSpan = createMentionSpan(`@${part.content}`);
                     tempDiv.appendChild(mentionSpan);
                 }
                 foundCursor = true;
@@ -290,7 +285,7 @@ const calculateCursorPosition = (
             }
 
             // Add the full mention
-            const mentionSpan = createMentionButton(`@${part.content}`);
+            const mentionSpan = createMentionSpan(`@${part.content}`);
             tempDiv.appendChild(mentionSpan);
             inputPosition += originalMentionLength;
         } else {
@@ -315,7 +310,7 @@ const calculateCursorPosition = (
     document.body.appendChild(tempDiv);
 
     // Try to get the actual rendered width from the AtMention components
-    const tempMentions = tempDiv.querySelectorAll('button.mention--highlight');
+    const tempMentions = tempDiv.querySelectorAll('.mention-highlight');
 
     // Replace temp mention content with actual rendered content if available
     tempMentions.forEach((tempMention, index) => {
