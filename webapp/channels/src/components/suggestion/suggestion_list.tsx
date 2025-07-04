@@ -187,11 +187,9 @@ export default class SuggestionList extends React.PureComponent<Props> {
     }
 
     render() {
-        console.log('SuggestionList render: open:', this.props.open, 'cleared:', this.props.cleared, 'items.length:', this.props.items.length);
         const {renderDividers} = this.props;
 
         if (!this.props.open || this.props.cleared) {
-            console.log('SuggestionList returning null - open:', this.props.open, 'cleared:', this.props.cleared);
             return null;
         }
 
