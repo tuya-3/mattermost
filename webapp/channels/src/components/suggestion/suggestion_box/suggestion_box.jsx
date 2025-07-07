@@ -394,9 +394,27 @@ export default class SuggestionBox extends React.PureComponent {
             return;
         }
 
-        const suffix = text.substring(caret);
+        // Check if this is a mention term and convert to full name if necessary
+        let finalTerm = term;
+        if (term.startsWith('@')) {
+            const username = term.substring(1); // Remove @ symbol
+            
+            // Find the user item in our current suggestions
+            const userItem = this.state.items.find(item => 
+                item.username === username || (item.name && item.name === username)
+            );
+            
+            if (userItem && userItem.username) {
+                // This is a user mention, we'll keep it as username for now
+                // The MentionOverlay will handle the display transformation
+                finalTerm = term; // Keep original @username format
+            }
+        }
 
-        const newValue = prefix + term + ' ' + suffix;
+        const suffix = text.substring(caret);
+        const newValue = prefix + finalTerm + ' ' + suffix;
+        const targetCaretPosition = prefix.length + finalTerm.length + 1;
+
         textbox.value = newValue;
 
         if (this.props.onChange) {
@@ -412,7 +430,7 @@ export default class SuggestionBox extends React.PureComponent {
         // set the caret position after the next rendering
         window.requestAnimationFrame(() => {
             if (textbox.value === newValue) {
-                Utils.setCaretPosition(textbox, prefix.length + term.length + 1);
+                Utils.setCaretPosition(textbox, targetCaretPosition);
             }
         });
     };
@@ -820,6 +838,12 @@ export default class SuggestionBox extends React.PureComponent {
                         ref={this.inputRef}
                         autoComplete='off'
                         {...props}
+                        style={{
+                            ...props.style,
+                            caretColor: 'transparent',
+                            color: 'transparent',
+                            WebkitTextFillColor: 'transparent',
+                        }}
                         aria-controls='suggestionList'
                         role='combobox'
                         {...(this.state.selection && {'aria-activedescendant': `suggestionList_item_${this.state.selection}`})}

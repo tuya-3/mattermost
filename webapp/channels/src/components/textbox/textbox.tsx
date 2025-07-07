@@ -77,6 +77,8 @@ export type Props = {
     hasLabels?: boolean;
     hasError?: boolean;
     isInEditMode?: boolean;
+    teammateNameDisplay?: string;
+    usersByUsername?: Record<string, UserProfile>;
 };
 
 const VISIBLE = {visibility: 'visible'};
@@ -87,6 +89,10 @@ export default class Textbox extends React.PureComponent<Props> {
     private readonly wrapper: React.RefObject<HTMLDivElement>;
     private readonly message: React.RefObject<SuggestionBoxComponent>;
     private readonly preview: React.RefObject<HTMLDivElement>;
+
+    state = {
+        caretPosition: 0,
+    };
 
     static defaultProps = {
         supportsCommands: true,
@@ -136,6 +142,11 @@ export default class Textbox extends React.PureComponent<Props> {
     }
 
     handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Update caret position in state
+        this.setState({
+            caretPosition: e.target.selectionEnd || 0,
+        });
+        
         this.props.onChange(e);
     };
 
@@ -231,9 +242,31 @@ export default class Textbox extends React.PureComponent<Props> {
         this.props.onKeyDown?.(e as KeyboardEvent<TextboxElement>);
     };
 
-    handleMouseUp = (e: MouseEvent<TextboxElement>) => this.props.onMouseUp?.(e);
+    handleKeyUp = (e: KeyboardEvent<TextboxElement>) => {
+        // Update caret position on key events
+        const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+        const newCaretPosition = target.selectionEnd || 0;
+        
+        
+        this.setState({
+            caretPosition: newCaretPosition,
+        });
+        
+        this.props.onKeyUp?.(e);
+    };
 
-    handleKeyUp = (e: KeyboardEvent<TextboxElement>) => this.props.onKeyUp?.(e);
+    handleMouseUp = (e: MouseEvent<TextboxElement>) => {
+        // Update caret position on mouse events (clicking to move cursor)
+        const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+        const newCaretPosition = target.selectionEnd || 0;
+        
+        
+        this.setState({
+            caretPosition: newCaretPosition,
+        });
+        
+        this.props.onMouseUp?.(e);
+    };
 
     // adding in the HTMLDivElement to support event handling in preview state
     handleBlur = (e: FocusEvent<TextboxElement | HTMLDivElement>) => {
@@ -324,13 +357,19 @@ export default class Textbox extends React.PureComponent<Props> {
                     <MentionOverlay
                         value={this.props.value}
                         className="textbox-mention-overlay"
+                        cursorPosition={this.state.caretPosition}
+                        showCursor={true}
+                        // @ts-ignore - temporary ignore for debugging
+                        usersByUsername={this.props.usersByUsername}
+                        teammateNameDisplay={this.props.teammateNameDisplay}
+                        currentUserId={this.props.currentUserId}
                     />
                     <SuggestionBox
                         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                         // @ts-ignore
                         ref={this.message}
                         id={this.props.id}
-                        className={textboxClassName}
+                        className={`${textboxClassName} textbox-with-mention-overlay`}
                         spellCheck='true'
                         placeholder={this.props.createMessage}
                         onChange={this.handleChange}
@@ -344,7 +383,16 @@ export default class Textbox extends React.PureComponent<Props> {
                         onHeightChange={this.props.onHeightChange}
                         onWidthChange={this.props.onWidthChange}
                         onPaste={this.props.onPaste}
-                        style={this.getStyle()}
+                        style={{
+                            ...this.getStyle(),
+                            color: 'transparent',
+                            caretColor: 'transparent',
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            textShadow: 'none',
+                            WebkitTextFillColor: 'transparent',
+                        }}
                         inputComponent={this.props.inputComponent}
                         listComponent={this.props.suggestionList}
                         listPosition={this.props.suggestionListPosition}
