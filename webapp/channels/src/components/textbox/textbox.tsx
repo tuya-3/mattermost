@@ -19,11 +19,11 @@ import ChannelMentionProvider from 'components/suggestion/channel_mention_provid
 import AppCommandProvider from 'components/suggestion/command_provider/app_provider';
 import CommandProvider from 'components/suggestion/command_provider/command_provider';
 import EmoticonProvider from 'components/suggestion/emoticon_provider';
+import MentionOverlay from 'components/suggestion/mention_overlay';
 import type Provider from 'components/suggestion/provider';
 import SuggestionBox from 'components/suggestion/suggestion_box';
 import type SuggestionBoxComponent from 'components/suggestion/suggestion_box/suggestion_box';
 import SuggestionList from 'components/suggestion/suggestion_list';
-import MentionOverlay from 'components/suggestion/mention_overlay';
 
 import * as Utils from 'utils/utils';
 
@@ -146,7 +146,7 @@ export default class Textbox extends React.PureComponent<Props> {
         this.setState({
             caretPosition: e.target.selectionEnd || 0,
         });
-        
+
         this.props.onChange(e);
     };
 
@@ -246,12 +246,11 @@ export default class Textbox extends React.PureComponent<Props> {
         // Update caret position on key events
         const target = e.target as HTMLInputElement | HTMLTextAreaElement;
         const newCaretPosition = target.selectionEnd || 0;
-        
-        
+
         this.setState({
             caretPosition: newCaretPosition,
         });
-        
+
         this.props.onKeyUp?.(e);
     };
 
@@ -259,12 +258,11 @@ export default class Textbox extends React.PureComponent<Props> {
         // Update caret position on mouse events (clicking to move cursor)
         const target = e.target as HTMLInputElement | HTMLTextAreaElement;
         const newCaretPosition = target.selectionEnd || 0;
-        
-        
+
         this.setState({
             caretPosition: newCaretPosition,
         });
-        
+
         this.props.onMouseUp?.(e);
     };
 
@@ -279,20 +277,20 @@ export default class Textbox extends React.PureComponent<Props> {
         if (!this.message || !this.message.current) {
             return null;
         }
-        
+
         const component = this.message.current;
-        
+
         // Check if component has getTextbox method (either direct SuggestionBox or SuggestionBoxWithOverlay)
         if (typeof component.getTextbox === 'function') {
             try {
                 return component.getTextbox();
             } catch (error) {
-                console.error('Error calling getTextbox:', error);
+                // Error calling getTextbox - component may not have this method
                 return null;
             }
         }
-        
-        console.warn('Expected component with getTextbox method, got:', component);
+
+        // Component doesn't have getTextbox method
         return null;
     };
 
@@ -356,10 +354,11 @@ export default class Textbox extends React.PureComponent<Props> {
                 <div style={{position: 'relative'}}>
                     <MentionOverlay
                         value={this.props.value}
-                        className="textbox-mention-overlay"
+                        className='textbox-mention-overlay'
                         cursorPosition={this.state.caretPosition}
                         showCursor={true}
-                        // @ts-ignore - temporary ignore for debugging
+
+                        // @ts-expect-error - temporary expect error for debugging
                         usersByUsername={this.props.usersByUsername}
                         teammateNameDisplay={this.props.teammateNameDisplay}
                         currentUserId={this.props.currentUserId}

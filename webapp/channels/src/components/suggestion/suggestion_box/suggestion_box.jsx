@@ -398,12 +398,12 @@ export default class SuggestionBox extends React.PureComponent {
         let finalTerm = term;
         if (term.startsWith('@')) {
             const username = term.substring(1); // Remove @ symbol
-            
+
             // Find the user item in our current suggestions
-            const userItem = this.state.items.find(item => 
-                item.username === username || (item.name && item.name === username)
+            const userItem = this.state.items.find((item) =>
+                item.username === username || (item.name && item.name === username),
             );
-            
+
             if (userItem && userItem.username) {
                 // This is a user mention, we'll keep it as username for now
                 // The MentionOverlay will handle the display transformation

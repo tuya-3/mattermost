@@ -29,7 +29,6 @@ function TestWrapper(props: React.ComponentPropsWithoutRef<typeof SuggestionBox>
     const [value, setValue] = useState(props.value);
 
     const handleChange = useCallback((e) => {
-        
         setValue(e.target.value);
     }, []);
 
@@ -61,7 +60,7 @@ class TestProvider extends Provider {
         }
 
         const terms = [pretext + pretext];
-        
+
         // Always call the callback with results
         setTimeout(() => {
             resultCallback({
@@ -115,12 +114,12 @@ describe('SuggestionBox', () => {
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 
         const input = getByPlaceholderText('test input');
-        
+
         // Focus the input to set focused state to true
         act(() => {
             fireEvent.focus(input);
         });
-        
+
         // Type text to trigger suggestions
         act(() => {
             fireEvent.change(input, {target: {value: 'test'}});
@@ -129,7 +128,7 @@ describe('SuggestionBox', () => {
 
         // Wait for debouncing to complete (100ms + buffer)
         await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 200));
         });
 
         await waitFor(() => {
@@ -151,7 +150,7 @@ describe('SuggestionBox', () => {
 
         // Wait for debouncing again
         await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 200));
         });
 
         await waitFor(() => {
@@ -183,7 +182,7 @@ describe('SuggestionBox', () => {
         expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
 
         const input = screen.getByPlaceholderText('test input');
-        
+
         // Focus and type text to show suggestions
         act(() => {
             fireEvent.focus(input);
@@ -193,7 +192,7 @@ describe('SuggestionBox', () => {
 
         // Wait for debouncing and suggestions to appear
         await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 200));
         });
 
         await waitFor(() => {
@@ -221,7 +220,7 @@ describe('SuggestionBox', () => {
         );
 
         const input = screen.getByPlaceholderText('test input');
-        
+
         // Focus and type text to show suggestions
         act(() => {
             fireEvent.focus(input);
@@ -231,7 +230,7 @@ describe('SuggestionBox', () => {
 
         // Wait for debouncing and suggestions to appear
         await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 200));
         });
 
         await waitFor(() => {
@@ -349,7 +348,7 @@ describe('SuggestionBox', () => {
         );
 
         const input = screen.getByPlaceholderText('test input');
-        
+
         // Focus the input first
         act(() => {
             fireEvent.focus(input);
@@ -368,7 +367,7 @@ describe('SuggestionBox', () => {
 
         // Wait for debouncing
         await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 200));
         });
 
         // The autocomplete still shouldn't be visible
@@ -384,7 +383,7 @@ describe('SuggestionBox', () => {
 
         // Wait for debouncing and suggestions to appear
         await act(async () => {
-            await new Promise(resolve => setTimeout(resolve, 200));
+            await new Promise((resolve) => setTimeout(resolve, 200));
         });
 
         await waitFor(() => {
@@ -393,12 +392,12 @@ describe('SuggestionBox', () => {
 
         // Ensure that the input is correctly linked to the suggestion list
         expect(document.getElementById(input.getAttribute('aria-controls')!)).toBe(screen.getByRole('listbox'));
-        
+
         // Wait for aria-activedescendant to be set
         await waitFor(() => {
             expect(input.getAttribute('aria-activedescendant')).toBeTruthy();
         });
-        
+
         expect(document.getElementById(input.getAttribute('aria-activedescendant')!)).toBe(screen.getByRole('listbox').firstElementChild);
 
         // The number of results should also be read out

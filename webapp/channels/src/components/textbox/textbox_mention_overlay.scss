@@ -1,80 +1,80 @@
 .textbox-mention-overlay {
     position: absolute;
+    z-index: 10;
     top: 0;
-    left: 0;
     right: 0;
     bottom: 0;
-    pointer-events: none;
-    z-index: 10;
+    left: 0;
+    overflow: hidden;
     padding: 16px;
+    background: transparent;
+    color: var(--center-channel-color);
+    font-family: inherit;
     font-size: 14px;
     line-height: 20px;
-    font-family: inherit;
+    pointer-events: none;
     white-space: pre-wrap;
-    word-wrap: break-word;
     word-break: break-word;
-    overflow: hidden;
-    color: var(--center-channel-color);
-    background: transparent;
+    word-wrap: break-word;
     
     .mention-highlight {
-        color: var(--mention-color, #0073e6);
-        background: rgba(var(--mention-color-rgb, 0, 115, 230), 0.1);
-        border-radius: 3px;
-        padding: 2px 4px;
-        margin: 0;
-        border: none;
-        font-weight: 600;
-        display: inline;
         position: relative;
         z-index: 1;
+        display: inline;
+        padding: 2px 4px;
+        border: none;
+        border-radius: 3px;
+        margin: 0;
+        background: rgba(var(--mention-color-rgb, 0, 115, 230), 0.1);
+        color: var(--mention-color, #0073e6);
+        font-weight: 600;
         /* カーソルが見えるように背景を透明化 */
         mix-blend-mode: multiply;
     }
     
     .mention-overlay-cursor {
-        animation: blink 1s infinite;
         position: fixed !important;
         z-index: 9999999 !important;
-        pointer-events: none !important;
         display: block !important;
+        overflow: visible;
+        animation: blink 1s infinite;
         background-color: var(--center-channel-color) !important;
+        contain: layout style paint;
+        font-size: inherit;
         isolation: isolate !important;
+        line-height: inherit;
+        pointer-events: none !important;
         transform: translateZ(100px) !important;
         will-change: opacity;
-        font-size: inherit;
-        line-height: inherit;
-        overflow: visible;
-        contain: layout style paint;
     }
 }
 
 /* Force transparency on the underlying suggestion box input */
 .textbox-with-mention-overlay {
-    color: transparent !important;
-    caret-color: transparent !important;
     background: transparent !important;
-    text-shadow: none !important;
+    caret-color: transparent !important;
+    color: transparent !important;
     -webkit-text-fill-color: transparent !important;
+    text-shadow: none !important;
     
     /* Target the actual input/textarea elements */
     input, textarea {
-        color: transparent !important;
-        caret-color: transparent !important;
         background: transparent !important;
-        text-shadow: none !important;
+        caret-color: transparent !important;
+        color: transparent !important;
         -webkit-text-fill-color: transparent !important;
+        text-shadow: none !important;
     }
 }
 
 .textbox-mention-overlay + .form-control {
-    color: transparent !important;
-    caret-color: transparent !important;
-    background: transparent !important;
     border: none !important;
+    background: transparent !important;
+    caret-color: transparent !important;
+    color: transparent !important;
     outline: none !important;
-    text-shadow: none !important;
     -webkit-text-fill-color: transparent !important;
+    text-shadow: none !important;
 }
 
 /* Most specific selectors to ensure caret is hidden */
@@ -128,11 +128,11 @@ div[class*="suggestion-box"] textarea,
 .suggestion-box.textbox-with-mention-overlay,
 .suggestion-box.textbox-with-mention-overlay input,
 .suggestion-box.textbox-with-mention-overlay textarea {
-    color: transparent !important;
-    caret-color: transparent !important;
     background: transparent !important;
-    text-shadow: none !important;
+    caret-color: transparent !important;
+    color: transparent !important;
     -webkit-text-fill-color: transparent !important;
+    text-shadow: none !important;
 }
 
 /* Global override for any active mention overlay scenario */
@@ -147,9 +147,9 @@ div[class*="suggestion-box"] textarea,
 
 /* Additional styles for spell check handling */
 .suggestion-box-input-transparent {
-    text-rendering: optimizeSpeed !important;
     -webkit-font-smoothing: none !important;
     font-variant-ligatures: none !important;
+    text-rendering: optimizeSpeed !important;
 }
 
 /* Hide spell check underlines - more specific selectors */
@@ -163,25 +163,25 @@ textarea.suggestion-box-input-transparent::-webkit-grammar-error,
 .suggestion-box-input-wrapper input::-webkit-grammar-error,
 .suggestion-box input::-webkit-spelling-error,
 .suggestion-box input::-webkit-grammar-error {
-    text-decoration: none !important;
-    text-decoration-line: none !important;
-    text-decoration-thickness: 0 !important;
-    text-underline-offset: 0 !important;
-    background-image: none !important;
-    background: transparent !important;
     border-bottom: none !important;
-    text-shadow: none !important;
+    background: transparent !important;
+    background-image: none !important;
     filter: opacity(0) !important;
     -webkit-text-decoration: none !important;
-    -webkit-text-decoration-line: none !important;
+    text-decoration: none !important;
     -webkit-text-decoration-color: transparent !important;
+    -webkit-text-decoration-line: none !important;
+    text-decoration-line: none !important;
+    text-decoration-thickness: 0 !important;
+    text-shadow: none !important;
+    text-underline-offset: 0 !important;
 }
 
 /* Chrome 137+ specific */
 .suggestion-box-input-transparent::spelling-error,
 .suggestion-box-input-transparent::grammar-error {
-    text-decoration: none !important;
     background: transparent !important;
+    text-decoration: none !important;
 }
 
 /* Firefox specific */
@@ -196,8 +196,8 @@ textarea.suggestion-box-input-transparent::-moz-grammar-error {
 /* Global spell check hiding for any input in suggestion context */
 .suggestion-box input[spellcheck="false"]::-webkit-spelling-error,
 .suggestion-box input[spellcheck="false"]::-webkit-grammar-error {
-    text-decoration: none !important;
     background-image: none !important;
+    text-decoration: none !important;
 }
 
 @keyframes blink {

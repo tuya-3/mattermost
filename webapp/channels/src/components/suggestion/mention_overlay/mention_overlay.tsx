@@ -4,8 +4,9 @@
 import React, {useRef, useEffect, useState} from 'react';
 import type {ReactNode} from 'react';
 
-import {displayUsername} from 'mattermost-redux/utils/user_utils';
 import type {UserProfile} from '@mattermost/types/users';
+
+import {displayUsername} from 'mattermost-redux/utils/user_utils';
 
 import {getMentionRanges} from 'utils/mention_utils';
 import type {MentionRange} from 'utils/mention_utils';
@@ -32,7 +33,6 @@ export type Props = {
     showCursor?: boolean;
     usersByUsername?: Record<string, UserProfile>;
     teammateNameDisplay?: string;
-    currentUserId?: string;
 };
 
 type ParsedMentionPart = {
@@ -46,6 +46,7 @@ type ParsedMentionPart = {
  * This component parses the input text and replaces @mentions with full names
  * while preserving other text as-is.
  */
+/* eslint-disable react/prop-types */
 const MentionOverlay: React.NamedExoticComponent<Props> & {
     displayName?: string;
 } = React.memo(({
@@ -55,7 +56,6 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
     showCursor = false,
     usersByUsername = {},
     teammateNameDisplay = 'username',
-    currentUserId = '',
 }: Props) => {
     const overlayRef = useRef<HTMLDivElement>(null);
     const [actualCursorLeft, setActualCursorLeft] = useState(0);
@@ -142,7 +142,7 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                             fontWeight: '600',
                         }}
                     >
-                        @{displayName}
+                        {'@'}{displayName}
                     </span>
                 );
             }
@@ -154,13 +154,13 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
             lines.forEach((line, lineIndex) => {
                 if (lineIndex > 0) {
                     // Add line break before each line except the first
-                    elements.push(<br key={`br-${index}-${lineIndex}`} />);
+                    elements.push(<br key={`br-${index}-${lineIndex}`}/>);
                 }
                 if (line) {
                     elements.push(
                         <React.Fragment key={`text-${index}-${lineIndex}`}>
                             {line}
-                        </React.Fragment>
+                        </React.Fragment>,
                     );
                 }
             });
@@ -177,12 +177,11 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
         const parsedParts = parseMentionText(stringValue);
         const renderedParts = renderParts(parsedParts);
 
-
         return (
             <div
                 ref={overlayRef}
                 className={`suggestion-box-mention-overlay ${className || ''}`}
-                style={{ position: 'relative' }}
+                style={{position: 'relative'}}
             >
                 {renderedParts.length > 0 ? renderedParts : stringValue}
                 {showCursor && cursorPosition !== undefined && (
@@ -250,12 +249,12 @@ const createMentionSpan = (content: string, usersByUsername: Record<string, User
     mentionSpan.style.borderRadius = '3px';
     mentionSpan.style.color = 'var(--mention-color, #0073e6)';
     mentionSpan.style.fontWeight = '600';
-    
+
     // Extract username from @username format
     const username = content.startsWith('@') ? content.substring(1) : content;
     const user = usersByUsername[username];
     const displayName = user ? displayUsername(user, teammateNameDisplay) : username;
-    
+
     mentionSpan.textContent = `@${displayName}`;
 
     return mentionSpan;
@@ -291,7 +290,7 @@ const calculateCursorPosition = (
     const currentLineStartPos = cursorPosition - currentLineText.length;
 
     const tempDiv = createMeasurementDiv(overlayWidth);
-    
+
     // Ensure the div is properly added to the DOM for measurement
     // In test environments, this might not work properly
     if (typeof document !== 'undefined' && document.body) {
@@ -327,7 +326,7 @@ const calculateCursorPosition = (
                 if (mentionEndPosition > currentLineStartPos) {
                     const mentionSpan = createMentionSpan(`@${part.content}`, usersByUsername, teammateNameDisplay);
                     tempDiv.appendChild(mentionSpan);
-                    
+
                     // If cursor is at the end of mention, add a space
                     if (cursorPosition === mentionEndPosition) {
                         const spaceNode = document.createTextNode(' ');
@@ -352,30 +351,30 @@ const calculateCursorPosition = (
             // Process text that might span multiple lines
             let currentTextPos = inputPosition;
             const lines = part.content.split('\n');
-            
+
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 const lineStart = currentTextPos;
                 const lineEnd = currentTextPos + line.length;
-                
+
                 // Check if this line intersects with our current line
                 if (lineEnd > currentLineStartPos && lineStart <= cursorPosition) {
                     // Calculate what portion of this line to include
                     const startInLine = Math.max(0, currentLineStartPos - lineStart);
                     const endInLine = Math.min(line.length, cursorPosition - lineStart);
-                    
+
                     if (endInLine > startInLine) {
                         const textToAdd = line.substring(startInLine, endInLine);
                         const textNode = document.createTextNode(textToAdd);
                         tempDiv.appendChild(textNode);
                     }
-                    
+
                     if (lineEnd >= cursorPosition) {
                         foundCursor = true;
                         break;
                     }
                 }
-                
+
                 currentTextPos += line.length + (i < lines.length - 1 ? 1 : 0); // +1 for newline
             }
 
@@ -393,11 +392,11 @@ const calculateCursorPosition = (
             tempMention.textContent = overlayMention.textContent;
         }
     });
-    
+
     // Create a range to measure the exact position
     const range = document.createRange();
     const textNodes: Node[] = [];
-    
+
     // Collect all text nodes
     const collectTextNodes = (node: Node) => {
         if (node.nodeType === Node.TEXT_NODE) {
@@ -408,17 +407,17 @@ const calculateCursorPosition = (
             }
         }
     };
-    
+
     collectTextNodes(tempDiv);
-    
+
     let width = 0;
-    
+
     if (textNodes.length > 0) {
         // Set range to the end of the last text node
         const lastTextNode = textNodes[textNodes.length - 1];
         range.setStart(tempDiv, 0);
         range.setEnd(lastTextNode, lastTextNode.textContent?.length || 0);
-        
+
         // Check if getBoundingClientRect is available (it might not be in test environments like JSDOM)
         if (typeof range.getBoundingClientRect === 'function') {
             const rect = range.getBoundingClientRect();
@@ -429,7 +428,7 @@ const calculateCursorPosition = (
             width = textContent.length * 8; // Rough approximation: 8px per character
         }
     }
-    
+
     // Safely remove the temporary div from DOM
     if (tempDiv.parentNode) {
         tempDiv.parentNode.removeChild(tempDiv);

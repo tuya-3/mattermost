@@ -3,19 +3,17 @@
 
 import {connect} from 'react-redux';
 
-import {getUsersByUsername} from 'mattermost-redux/selectors/entities/users';
 import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
-
-import MentionOverlay from './mention_overlay';
+import {getUsersByUsername} from 'mattermost-redux/selectors/entities/users';
 
 import type {GlobalState} from 'types/store';
+
+import MentionOverlay from './mention_overlay';
 
 function mapStateToProps(state: GlobalState) {
     return {
         usersByUsername: getUsersByUsername(state),
         teammateNameDisplay: getTeammateNameDisplaySetting(state),
-        currentUserId: getCurrentUserId(state),
     };
 }
 
