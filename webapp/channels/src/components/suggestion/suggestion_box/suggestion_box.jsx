@@ -837,12 +837,18 @@ export default class SuggestionBox extends React.PureComponent {
                     <QuickInput
                         ref={this.inputRef}
                         autoComplete='off'
+                        spellCheck={false}
+                        autoCorrect='off'
+                        autoCapitalize='off'
                         {...props}
                         style={{
                             ...props.style,
                             caretColor: 'transparent',
                             color: 'transparent',
                             WebkitTextFillColor: 'transparent',
+                            opacity: 0.01, // Almost invisible but still interactive
+                            position: 'relative',
+                            zIndex: 1,
                         }}
                         aria-controls='suggestionList'
                         role='combobox'
@@ -854,7 +860,6 @@ export default class SuggestionBox extends React.PureComponent {
                         onCompositionUpdate={this.handleCompositionUpdate}
                         onCompositionEnd={this.handleCompositionEnd}
                         onKeyDown={this.handleKeyDown}
-                        className={`${props.className || ''} suggestion-box-input-transparent`}
                     />
                 </div>
                 {(this.props.openWhenEmpty || this.props.value.length >= this.props.requiredCharacters) && this.state.presentationType === 'text' && (this.state.items.length > 0 || this.props.openWhenEmpty) && (

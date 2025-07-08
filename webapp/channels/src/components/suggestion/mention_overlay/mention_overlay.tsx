@@ -1,7 +1,6 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-import PropTypes from 'prop-types';
 import React, {useRef, useEffect, useState} from 'react';
 import type {ReactNode} from 'react';
 
@@ -48,136 +47,89 @@ type ParsedMentionPart = {
  * while preserving other text as-is.
  */
 const MentionOverlay: React.NamedExoticComponent<Props> & {
-    propTypes?: any;
-} = React.memo<Props>(({
-    value, 
-    className, 
-    cursorPosition, 
-    showCursor = false, 
+    displayName?: string;
+} = React.memo(({
+    value,
+    className,
+    cursorPosition,
+    showCursor = false,
     usersByUsername = {},
     teammateNameDisplay = 'username',
-    currentUserId = ''
-}) => {
-
-    // React Hooks must be called before any conditional returns
+    currentUserId = '',
+}: Props) => {
     const overlayRef = useRef<HTMLDivElement>(null);
-    const [actualCursorLeft, setActualCursorLeft] = useState<number>(0);
-    const [actualCursorTop, setActualCursorTop] = useState<number>(0);
+    const [actualCursorLeft, setActualCursorLeft] = useState(0);
+    const [actualCursorTop, setActualCursorTop] = useState(0);
 
-    const stringValue = typeof value === 'string' ? value : String(value);
+    // Convert value to string
+    const stringValue = value?.toString() || '';
 
-    // Calculate actual cursor position using DOM measurement
-    useEffect(() => {
-        console.log('🔍 useEffect triggered:', {
-            showCursor,
-            cursorPosition,
-            hasOverlayRef: !!overlayRef.current,
-            stringValue
-        });
-
-        if (showCursor && cursorPosition !== undefined && overlayRef.current) {
-            
-            // Wait for next frame to ensure AtMention components are rendered
-            requestAnimationFrame(() => {
-                if (!overlayRef.current) {
-                    console.log('🔍 No overlayRef in requestAnimationFrame');
-                    return;
-                }
-
-                // Re-parse the current value to ensure we have the latest state
-                const currentParsedParts = parseMentionText(stringValue);
-                // Get overlay mentions for content replacement
-                const overlayMentions = overlayRef.current.querySelectorAll('.mention-highlight');
-
-                console.log('🔍 Before calculateCursorPosition:', {
-                    cursorPosition,
-                    parsedPartsCount: currentParsedParts.length,
-                    overlayWidth: overlayRef.current.offsetWidth,
-                    mentionsCount: overlayMentions.length
-                });
-
-                // Calculate cursor position using helper function
-                const {left, top} = calculateCursorPosition(
-                    cursorPosition,
-                    currentParsedParts,
-                    overlayRef.current.offsetWidth,
-                    overlayMentions,
-                    usersByUsername,
-                    teammateNameDisplay,
-                    stringValue, // Pass original value for debugging
-                );
-
-                console.log('🔍 Calculated position:', { left, top });
-
-                setActualCursorLeft(left);
-                setActualCursorTop(top);
-            });
-        }
-    }, [stringValue, cursorPosition, showCursor]);
-
-    if (!value || value === '') {
-        return null;
-    }
-
+    // Parse mentions from the text
     const parseMentionText = (text: string): ParsedMentionPart[] => {
-        if (!text || typeof text !== 'string') {
-            return [];
-        }
-
-        let mentionRanges: MentionRange[] = [];
-        try {
-            mentionRanges = getMentionRanges(text);
-        } catch (error) {
-            // Fallback to plain text rendering on parsing errors
-            return createTextPart(text);
-        }
-
-        if (mentionRanges.length === 0) {
-            return createTextPart(text);
-        }
-
+        const mentionRanges = getMentionRanges(text);
         const parts: ParsedMentionPart[] = [];
-        let lastIndex = 0;
+        let lastEnd = 0;
 
         for (const range of mentionRanges) {
-            // Add text before the mention
-            if (range.start > lastIndex) {
-                const textContent = text.substring(lastIndex, range.start);
-                parts.push(createTextPartFromContent(textContent));
+            // Add text before mention
+            if (range.start > lastEnd) {
+                parts.push(createTextPartFromContent(text.substring(lastEnd, range.start)));
             }
 
-            // Add the mention part
-            const mentionPart = {
-                type: 'mention' as const,
-                content: range.text.substring(1), // Remove @ symbol
+            // Add mention
+            const mentionText = text.substring(range.start, range.end);
+            const username = mentionText.substring(1); // Remove @ prefix
+            parts.push({
+                type: 'mention',
+                content: username,
                 range,
-            };
-            parts.push(mentionPart);
+            });
 
-            lastIndex = range.end;
+            lastEnd = range.end;
         }
 
-        // Add remaining text after the last mention
-        if (lastIndex < text.length) {
-            const textContent = text.substring(lastIndex);
-            parts.push(createTextPartFromContent(textContent));
+        // Add remaining text
+        if (lastEnd < text.length) {
+            parts.push(createTextPartFromContent(text.substring(lastEnd)));
         }
 
         return parts;
     };
 
+    // Calculate cursor position whenever value or cursorPosition changes
+    useEffect(() => {
+        if (!showCursor || cursorPosition === undefined || !overlayRef.current) {
+            return;
+        }
+
+        const parsedParts = parseMentionText(stringValue);
+        const overlayMentions = overlayRef.current.querySelectorAll('.mention-highlight');
+        const position = calculateCursorPosition(
+            cursorPosition,
+            parsedParts,
+            overlayRef.current.offsetWidth,
+            overlayMentions,
+            usersByUsername,
+            teammateNameDisplay,
+            stringValue,
+        );
+
+        setActualCursorLeft(position.left);
+        setActualCursorTop(position.top);
+    }, [stringValue, cursorPosition, showCursor, usersByUsername, teammateNameDisplay]);
+
+    // Render parts with mentions highlighted
     const renderParts = (parts: ParsedMentionPart[]): ReactNode[] => {
         return parts.map((part, index) => {
             if (part.type === 'mention') {
-                // Get user information for display name
                 const user = usersByUsername[part.content];
-                const displayName = user ? 
-                    displayUsername(user, teammateNameDisplay) : 
+                const displayName = user ?
+                    displayUsername(user, teammateNameDisplay) :
                     part.content;
 
                 return (
                     <span
-                        key={`mention-${part.range?.start ?? index}`}
+                        key={`mention-${index}`}
                         className='mention-highlight'
                         style={{
                             display: 'inline',
@@ -190,15 +142,32 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                             fontWeight: '600',
                         }}
                     >
-                        {`@${displayName}`}
+                        @{displayName}
                     </span>
                 );
             }
 
-            // Return text parts with a key for React reconciliation
+            // For text parts, preserve line breaks
+            const lines = part.content.split('\n');
+            const elements: ReactNode[] = [];
+
+            lines.forEach((line, lineIndex) => {
+                if (lineIndex > 0) {
+                    // Add line break before each line except the first
+                    elements.push(<br key={`br-${index}-${lineIndex}`} />);
+                }
+                if (line) {
+                    elements.push(
+                        <React.Fragment key={`text-${index}-${lineIndex}`}>
+                            {line}
+                        </React.Fragment>
+                    );
+                }
+            });
+
             return (
                 <React.Fragment key={`text-${index}`}>
-                    {part.content}
+                    {elements}
                 </React.Fragment>
             );
         });
@@ -216,31 +185,22 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                 style={{ position: 'relative' }}
             >
                 {renderedParts.length > 0 ? renderedParts : stringValue}
-                {showCursor && cursorPosition !== undefined && (() => {
-                    console.log('🔍 Rendering cursor:', {
-                        showCursor,
-                        cursorPosition,
-                        actualCursorLeft,
-                        actualCursorTop,
-                        overlayRect: overlayRef.current?.getBoundingClientRect()
-                    });
-                    return (
-                        <div
-                            className='mention-overlay-cursor'
-                            style={{
-                                left: `${(overlayRef.current?.getBoundingClientRect().left || 0) + actualCursorLeft}px`,
-                                top: `${(overlayRef.current?.getBoundingClientRect().top || 0) + actualCursorTop}px`,
-                                width: OVERLAY_STYLES.cursorWidth,
-                                height: OVERLAY_STYLES.cursorHeight,
-                                backgroundColor: 'var(--center-channel-color)',
-                                pointerEvents: 'none',
-                                zIndex: 9999999,
-                                display: 'block',
-                                opacity: 1,
-                            }}
-                        />
-                    );
-                })()}
+                {showCursor && cursorPosition !== undefined && (
+                    <div
+                        className='mention-overlay-cursor'
+                        style={{
+                            left: `${(overlayRef.current?.getBoundingClientRect().left || 0) + actualCursorLeft}px`,
+                            top: `${(overlayRef.current?.getBoundingClientRect().top || 0) + actualCursorTop}px`,
+                            width: OVERLAY_STYLES.cursorWidth,
+                            height: OVERLAY_STYLES.cursorHeight,
+                            backgroundColor: 'var(--center-channel-color)',
+                            pointerEvents: 'none',
+                            zIndex: 9999999,
+                            display: 'block',
+                            opacity: 1,
+                        }}
+                    />
+                )}
             </div>
         );
     } catch (error) {
@@ -254,13 +214,6 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
 });
 
 MentionOverlay.displayName = 'MentionOverlay';
-
-MentionOverlay.propTypes = {
-    value: PropTypes.oneOfType([PropTypes.string, PropTypes.any]),
-    className: PropTypes.string,
-    cursorPosition: PropTypes.number,
-    showCursor: PropTypes.bool,
-};
 
 /**
  * Creates and styles a temporary div for text measurement
@@ -320,9 +273,16 @@ const calculateCursorPosition = (
     teammateNameDisplay: string,
     originalValue: string,
 ): { left: number; top: number } => {
+    // Count lines by checking for line breaks in the original value up to cursor
+    const textUpToCursor = originalValue.substring(0, cursorPosition);
+    const lines = textUpToCursor.split('\n');
+    const lineNumber = lines.length - 1;
+    const currentLineText = lines[lines.length - 1];
+    const currentLineStartPos = cursorPosition - currentLineText.length;
+
     const tempDiv = createMeasurementDiv(overlayWidth);
 
-    // Build content up to cursor position by mapping input positions to display positions
+    // Build content for the current line only
     let inputPosition = 0;
     let foundCursor = false;
 
@@ -334,51 +294,72 @@ const calculateCursorPosition = (
         if (part.type === 'mention') {
             // Use the range from the parsed mention to get the actual input length
             const originalMentionLength = part.range ? (part.range.end - part.range.start) : (part.content.length + 1);
-            const user = usersByUsername[part.content];
-            const displayName = user ?
-                displayUsername(user, teammateNameDisplay) :
-                part.content;
-
-            // Check if cursor is anywhere within the mention range or immediately after
             const mentionEndPosition = inputPosition + originalMentionLength;
 
-            // If cursor is within or at the end of this mention
-            if (cursorPosition >= inputPosition && cursorPosition <= mentionEndPosition) {
-                // Add the full mention
-                const mentionSpan = createMentionSpan(`@${part.content}`, usersByUsername, teammateNameDisplay);
-                tempDiv.appendChild(mentionSpan);
-                
-                // If cursor is exactly at the end of mention, add a space
-                if (cursorPosition === mentionEndPosition) {
-                    const spaceNode = document.createTextNode(' ');
-                    tempDiv.appendChild(spaceNode);
-                }
-                
-                foundCursor = true;
-                break;
+            // Skip parts before the current line
+            if (mentionEndPosition <= currentLineStartPos) {
+                inputPosition += originalMentionLength;
+                continue;
             }
 
-            // Cursor is after this mention - add mention and continue
-            const mentionSpan = createMentionSpan(`@${part.content}`, usersByUsername, teammateNameDisplay);
-            tempDiv.appendChild(mentionSpan);
+            // If mention starts before current line but extends into it or is on current line
+            if (inputPosition < cursorPosition) {
+                // Check if this mention is on the current line
+                if (mentionEndPosition > currentLineStartPos) {
+                    const mentionSpan = createMentionSpan(`@${part.content}`, usersByUsername, teammateNameDisplay);
+                    tempDiv.appendChild(mentionSpan);
+                    
+                    // If cursor is at the end of mention, add a space
+                    if (cursorPosition === mentionEndPosition) {
+                        const spaceNode = document.createTextNode(' ');
+                        tempDiv.appendChild(spaceNode);
+                        foundCursor = true;
+                        break;
+                    }
+                }
+            }
 
-            // Cursor is after this mention - continue
             inputPosition += originalMentionLength;
         } else {
             const textLength = part.content.length;
+            const textEndPosition = inputPosition + textLength;
 
-            if (inputPosition + textLength >= cursorPosition) {
-                // Cursor is within this text part
-                const offsetInText = cursorPosition - inputPosition;
-                const textToCursor = part.content.substring(0, offsetInText);
-                const textNode = document.createTextNode(textToCursor);
-                tempDiv.appendChild(textNode);
-                foundCursor = true;
-                break;
+            // Skip parts before the current line
+            if (textEndPosition <= currentLineStartPos) {
+                inputPosition += textLength;
+                continue;
             }
 
-            const textNode = document.createTextNode(part.content);
-            tempDiv.appendChild(textNode);
+            // Process text that might span multiple lines
+            let currentTextPos = inputPosition;
+            const lines = part.content.split('\n');
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const lineStart = currentTextPos;
+                const lineEnd = currentTextPos + line.length;
+                
+                // Check if this line intersects with our current line
+                if (lineEnd > currentLineStartPos && lineStart <= cursorPosition) {
+                    // Calculate what portion of this line to include
+                    const startInLine = Math.max(0, currentLineStartPos - lineStart);
+                    const endInLine = Math.min(line.length, cursorPosition - lineStart);
+                    
+                    if (endInLine > startInLine) {
+                        const textToAdd = line.substring(startInLine, endInLine);
+                        const textNode = document.createTextNode(textToAdd);
+                        tempDiv.appendChild(textNode);
+                    }
+                    
+                    if (lineEnd >= cursorPosition) {
+                        foundCursor = true;
+                        break;
+                    }
+                }
+                
+                currentTextPos += line.length + (i < lines.length - 1 ? 1 : 0); // +1 for newline
+            }
+
             inputPosition += textLength;
         }
     }
@@ -395,9 +376,6 @@ const calculateCursorPosition = (
             tempMention.textContent = overlayMention.textContent;
         }
     });
-
-    // Measure the actual width of the content in tempDiv
-    document.body.appendChild(tempDiv);
     
     // Create a range to measure the exact position
     const range = document.createRange();
@@ -425,27 +403,10 @@ const calculateCursorPosition = (
         range.setEnd(lastTextNode, lastTextNode.textContent?.length || 0);
         
         const rect = range.getBoundingClientRect();
-        const tempDivRect = tempDiv.getBoundingClientRect();
         width = rect.width;
-        
-        console.log('🎯 Width measurement:', {
-            width,
-            rectWidth: rect.width,
-            tempDivWidth: tempDiv.offsetWidth,
-            tempDivContent: tempDiv.textContent,
-            tempDivHTML: tempDiv.innerHTML,
-            cursorPosition,
-            originalValue,
-            foundCursor
-        });
     }
     
     document.body.removeChild(tempDiv);
-    
-    // Count lines by checking for line breaks in the original value up to cursor
-    const textUpToCursor = originalValue.substring(0, cursorPosition);
-    const lines = textUpToCursor.split('\n');
-    const lineNumber = lines.length - 1;
 
     // Calculate position
     const left = width + POSITION_OFFSETS.left; // Position at the end of content

@@ -145,6 +145,61 @@ div[class*="suggestion-box"] textarea,
     -webkit-text-fill-color: transparent !important;
 }
 
+/* Additional styles for spell check handling */
+.suggestion-box-input-transparent {
+    text-rendering: optimizeSpeed !important;
+    -webkit-font-smoothing: none !important;
+    font-variant-ligatures: none !important;
+}
+
+/* Hide spell check underlines - more specific selectors */
+.suggestion-box-input-transparent::-webkit-spelling-error,
+.suggestion-box-input-transparent::-webkit-grammar-error,
+input.suggestion-box-input-transparent::-webkit-spelling-error,
+input.suggestion-box-input-transparent::-webkit-grammar-error,
+textarea.suggestion-box-input-transparent::-webkit-spelling-error,
+textarea.suggestion-box-input-transparent::-webkit-grammar-error,
+.suggestion-box-input-wrapper input::-webkit-spelling-error,
+.suggestion-box-input-wrapper input::-webkit-grammar-error,
+.suggestion-box input::-webkit-spelling-error,
+.suggestion-box input::-webkit-grammar-error {
+    text-decoration: none !important;
+    text-decoration-line: none !important;
+    text-decoration-thickness: 0 !important;
+    text-underline-offset: 0 !important;
+    background-image: none !important;
+    background: transparent !important;
+    border-bottom: none !important;
+    text-shadow: none !important;
+    filter: opacity(0) !important;
+    -webkit-text-decoration: none !important;
+    -webkit-text-decoration-line: none !important;
+    -webkit-text-decoration-color: transparent !important;
+}
+
+/* Chrome 137+ specific */
+.suggestion-box-input-transparent::spelling-error,
+.suggestion-box-input-transparent::grammar-error {
+    text-decoration: none !important;
+    background: transparent !important;
+}
+
+/* Firefox specific */
+input.suggestion-box-input-transparent::-moz-spelling-error,
+input.suggestion-box-input-transparent::-moz-grammar-error,
+textarea.suggestion-box-input-transparent::-moz-spelling-error,
+textarea.suggestion-box-input-transparent::-moz-grammar-error {
+    text-decoration: none !important;
+    text-decoration-line: none !important;
+}
+
+/* Global spell check hiding for any input in suggestion context */
+.suggestion-box input[spellcheck="false"]::-webkit-spelling-error,
+.suggestion-box input[spellcheck="false"]::-webkit-grammar-error {
+    text-decoration: none !important;
+    background-image: none !important;
+}
+
 @keyframes blink {
     0%, 50% { opacity: 1; }
     51%, 100% { opacity: 0; }
