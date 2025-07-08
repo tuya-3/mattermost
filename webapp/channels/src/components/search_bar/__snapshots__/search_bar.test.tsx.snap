@@ -24,18 +24,8 @@ exports[`components/search_bar/SearchBar should match snapshot with search 1`] =
         class="w-full"
       >
         <div
-          aria-live="polite"
-          class="sr-only"
-          role="alert"
-        />
-        <div
           class="suggestion-box-input-wrapper"
         >
-          <div
-            class="suggestion-box-mention-overlay "
-          >
-            test
-          </div>
           <div
             class="input-wrapper"
           >
@@ -45,12 +35,16 @@ exports[`components/search_bar/SearchBar should match snapshot with search 1`] =
               aria-describedby="searchbar-help-popup"
               aria-expanded="false"
               aria-label="Search"
+              autocapitalize="off"
               autocomplete="off"
-              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              autocorrect="off"
+              class="search-bar form-control a11y__region"
               data-a11y-sort-order="9"
               id="searchBox"
               placeholder="Search"
               role="combobox"
+              spellcheck="false"
+              style="caret-color: transparent; color: transparent; opacity: 0.01; position: relative; z-index: 1;"
               tabindex="0"
               type="search"
               value="test"
@@ -108,18 +102,8 @@ exports[`components/search_bar/SearchBar should match snapshot with search, with
         class="w-full"
       >
         <div
-          aria-live="polite"
-          class="sr-only"
-          role="alert"
-        />
-        <div
           class="suggestion-box-input-wrapper"
         >
-          <div
-            class="suggestion-box-mention-overlay "
-          >
-            test
-          </div>
           <div
             class="input-wrapper"
           >
@@ -129,12 +113,16 @@ exports[`components/search_bar/SearchBar should match snapshot with search, with
               aria-describedby="searchbar-help-popup"
               aria-expanded="false"
               aria-label="Search"
+              autocapitalize="off"
               autocomplete="off"
-              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              autocorrect="off"
+              class="search-bar form-control a11y__region"
               data-a11y-sort-order="9"
               id="searchBox"
               placeholder="Search"
               role="combobox"
+              spellcheck="false"
+              style="caret-color: transparent; color: transparent; opacity: 0.01; position: relative; z-index: 1;"
               tabindex="0"
               type="search"
               value="test"
@@ -184,11 +172,6 @@ exports[`components/search_bar/SearchBar should match snapshot without search 1`
         class="w-full"
       >
         <div
-          aria-live="polite"
-          class="sr-only"
-          role="alert"
-        />
-        <div
           class="suggestion-box-input-wrapper"
         >
           <div
@@ -200,12 +183,16 @@ exports[`components/search_bar/SearchBar should match snapshot without search 1`
               aria-describedby="searchbar-help-popup"
               aria-expanded="false"
               aria-label="Search"
+              autocapitalize="off"
               autocomplete="off"
-              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              autocorrect="off"
+              class="search-bar form-control a11y__region"
               data-a11y-sort-order="9"
               id="searchBox"
               placeholder="Search"
               role="combobox"
+              spellcheck="false"
+              style="caret-color: transparent; color: transparent; opacity: 0.01; position: relative; z-index: 1;"
               tabindex="0"
               type="search"
               value=""
@@ -251,11 +238,6 @@ exports[`components/search_bar/SearchBar should match snapshot without search, w
         class="w-full"
       >
         <div
-          aria-live="polite"
-          class="sr-only"
-          role="alert"
-        />
-        <div
           class="suggestion-box-input-wrapper"
         >
           <div
@@ -267,12 +249,16 @@ exports[`components/search_bar/SearchBar should match snapshot without search, w
               aria-describedby="searchbar-help-popup"
               aria-expanded="false"
               aria-label="Search"
+              autocapitalize="off"
               autocomplete="off"
-              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              autocorrect="off"
+              class="search-bar form-control a11y__region"
               data-a11y-sort-order="9"
               id="searchBox"
               placeholder="Search"
               role="combobox"
+              spellcheck="false"
+              style="caret-color: transparent; color: transparent; opacity: 0.01; position: relative; z-index: 1;"
               tabindex="0"
               type="search"
               value=""
@@ -310,11 +296,6 @@ exports[`components/search_bar/SearchBar should match snapshot without search, w
         class="w-full"
       >
         <div
-          aria-live="polite"
-          class="sr-only"
-          role="alert"
-        />
-        <div
           class="suggestion-box-input-wrapper"
         >
           <div
@@ -326,12 +307,16 @@ exports[`components/search_bar/SearchBar should match snapshot without search, w
               aria-describedby="searchbar-help-popup"
               aria-expanded="false"
               aria-label="Search"
+              autocapitalize="off"
               autocomplete="off"
-              class="search-bar form-control a11y__region suggestion-box-input-transparent"
+              autocorrect="off"
+              class="search-bar form-control a11y__region"
               data-a11y-sort-order="9"
               id="searchBox"
               placeholder="Search"
               role="combobox"
+              spellcheck="false"
+              style="caret-color: transparent; color: transparent; opacity: 0.01; position: relative; z-index: 1;"
               tabindex="0"
               type="search"
               value=""
