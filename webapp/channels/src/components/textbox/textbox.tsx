@@ -266,6 +266,23 @@ export default class Textbox extends React.PureComponent<Props> {
         this.props.onMouseUp?.(e);
     };
 
+    handleCursorPositionChange = (position: number) => {
+        // Update caret position from MentionOverlay click events
+        this.setState({
+            caretPosition: position,
+        });
+
+        // Also update the actual input cursor position
+        if (this.message.current) {
+            const textbox = this.message.current.getTextbox();
+            
+            if (textbox) {
+                textbox.setSelectionRange(position, position);
+                textbox.focus();
+            }
+        }
+    };
+
     // adding in the HTMLDivElement to support event handling in preview state
     handleBlur = (e: FocusEvent<TextboxElement | HTMLDivElement>) => {
         // since we do only handle the sending when in preview mode this is fine to be casted
@@ -357,11 +374,7 @@ export default class Textbox extends React.PureComponent<Props> {
                         className='textbox-mention-overlay'
                         cursorPosition={this.state.caretPosition}
                         showCursor={true}
-
-                        // @ts-expect-error - temporary expect error for debugging
-                        usersByUsername={this.props.usersByUsername}
-                        teammateNameDisplay={this.props.teammateNameDisplay}
-                        currentUserId={this.props.currentUserId}
+                        onCursorPositionChange={this.handleCursorPositionChange}
                     />
                     <SuggestionBox
                         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -391,6 +404,8 @@ export default class Textbox extends React.PureComponent<Props> {
                             outline: 'none',
                             textShadow: 'none',
                             WebkitTextFillColor: 'transparent',
+                            position: 'relative',
+                            zIndex: 5,
                         }}
                         inputComponent={this.props.inputComponent}
                         listComponent={this.props.suggestionList}
