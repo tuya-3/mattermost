@@ -1,0 +1,206 @@
+.textbox-mention-overlay {
+    position: absolute;
+    z-index: 10;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    overflow: hidden;
+    padding: 16px;
+    background: transparent;
+    color: var(--center-channel-color);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 20px;
+    pointer-events: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    word-wrap: break-word;
+    
+    .mention-highlight {
+        position: relative;
+        z-index: 1;
+        display: inline;
+        padding: 2px 4px;
+        border: none;
+        border-radius: 3px;
+        margin: 0;
+        background: rgba(var(--mention-color-rgb, 0, 115, 230), 0.1);
+        color: var(--mention-color, #0073e6);
+        font-weight: 600;
+        /* カーソルが見えるように背景を透明化 */
+        mix-blend-mode: multiply;
+    }
+    
+    .mention-overlay-cursor {
+        position: fixed !important;
+        z-index: 9999999 !important;
+        display: block !important;
+        overflow: visible;
+        animation: blink 1s infinite;
+        background-color: var(--center-channel-color) !important;
+        contain: layout style paint;
+        font-size: inherit;
+        isolation: isolate !important;
+        line-height: inherit;
+        pointer-events: none !important;
+        transform: translateZ(100px) !important;
+        will-change: opacity;
+    }
+}
+
+/* Force transparency on the underlying suggestion box input */
+.textbox-with-mention-overlay {
+    background: transparent !important;
+    caret-color: transparent !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: none !important;
+    
+    /* Target the actual input/textarea elements */
+    input, textarea {
+        background: transparent !important;
+        caret-color: transparent !important;
+        color: transparent !important;
+        -webkit-text-fill-color: transparent !important;
+        text-shadow: none !important;
+    }
+}
+
+.textbox-mention-overlay + .form-control {
+    border: none !important;
+    background: transparent !important;
+    caret-color: transparent !important;
+    color: transparent !important;
+    outline: none !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: none !important;
+}
+
+/* Most specific selectors to ensure caret is hidden */
+.suggestion-box-input-transparent,
+.suggestion-box-input-transparent input,
+.suggestion-box-input-transparent textarea,
+input.suggestion-box-input-transparent,
+textarea.suggestion-box-input-transparent,
+.textbox-with-mention-overlay input,
+.textbox-with-mention-overlay textarea {
+    caret-color: transparent !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+/* Nuclear option - hide all carets when mention overlay is present */
+.textbox-mention-overlay ~ * input,
+.textbox-mention-overlay ~ * textarea,
+.textbox-mention-overlay ~ * * input,
+.textbox-mention-overlay ~ * * textarea,
+.textbox-mention-overlay + * input,
+.textbox-mention-overlay + * textarea {
+    caret-color: transparent !important;
+}
+
+/* Specific targeting for QuickInput when used in suggestion box */
+div[class*="suggestion-box"] input,
+div[class*="suggestion-box"] textarea,
+[class*="suggestion-box-input"] {
+    caret-color: transparent !important;
+}
+
+/* Override any other caret color settings in the input wrapper */
+.suggestion-box-input-wrapper input,
+.suggestion-box-input-wrapper textarea {
+    caret-color: transparent !important;
+}
+
+/* Force hide caret on any input when overlay is present (sibling selectors) */
+.textbox-mention-overlay ~ *,
+.textbox-mention-overlay ~ input,
+.textbox-mention-overlay ~ textarea,
+.textbox-mention-overlay ~ * input,
+.textbox-mention-overlay ~ * textarea,
+.textbox-mention-overlay ~ * * input,
+.textbox-mention-overlay ~ * * textarea {
+    caret-color: transparent !important;
+}
+
+/* Target suggestion box specifically when mention overlay is active */
+.suggestion-box.textbox-with-mention-overlay,
+.suggestion-box.textbox-with-mention-overlay input,
+.suggestion-box.textbox-with-mention-overlay textarea {
+    background: transparent !important;
+    caret-color: transparent !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    text-shadow: none !important;
+}
+
+/* Global override for any active mention overlay scenario */
+.textbox-mention-overlay + .suggestion-box input,
+.textbox-mention-overlay + .suggestion-box textarea,
+.textbox-mention-overlay ~ .suggestion-box input,
+.textbox-mention-overlay ~ .suggestion-box textarea {
+    caret-color: transparent !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+/* Additional styles for spell check handling */
+.suggestion-box-input-transparent {
+    -webkit-font-smoothing: none !important;
+    font-variant-ligatures: none !important;
+    text-rendering: optimizeSpeed !important;
+}
+
+/* Hide spell check underlines - more specific selectors */
+.suggestion-box-input-transparent::-webkit-spelling-error,
+.suggestion-box-input-transparent::-webkit-grammar-error,
+input.suggestion-box-input-transparent::-webkit-spelling-error,
+input.suggestion-box-input-transparent::-webkit-grammar-error,
+textarea.suggestion-box-input-transparent::-webkit-spelling-error,
+textarea.suggestion-box-input-transparent::-webkit-grammar-error,
+.suggestion-box-input-wrapper input::-webkit-spelling-error,
+.suggestion-box-input-wrapper input::-webkit-grammar-error,
+.suggestion-box input::-webkit-spelling-error,
+.suggestion-box input::-webkit-grammar-error {
+    border-bottom: none !important;
+    background: transparent !important;
+    background-image: none !important;
+    filter: opacity(0) !important;
+    -webkit-text-decoration: none !important;
+    text-decoration: none !important;
+    -webkit-text-decoration-color: transparent !important;
+    -webkit-text-decoration-line: none !important;
+    text-decoration-line: none !important;
+    text-decoration-thickness: 0 !important;
+    text-shadow: none !important;
+    text-underline-offset: 0 !important;
+}
+
+/* Chrome 137+ specific */
+.suggestion-box-input-transparent::spelling-error,
+.suggestion-box-input-transparent::grammar-error {
+    background: transparent !important;
+    text-decoration: none !important;
+}
+
+/* Firefox specific */
+input.suggestion-box-input-transparent::-moz-spelling-error,
+input.suggestion-box-input-transparent::-moz-grammar-error,
+textarea.suggestion-box-input-transparent::-moz-spelling-error,
+textarea.suggestion-box-input-transparent::-moz-grammar-error {
+    text-decoration: none !important;
+    text-decoration-line: none !important;
+}
+
+/* Global spell check hiding for any input in suggestion context */
+.suggestion-box input[spellcheck="false"]::-webkit-spelling-error,
+.suggestion-box input[spellcheck="false"]::-webkit-grammar-error {
+    background-image: none !important;
+    text-decoration: none !important;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}

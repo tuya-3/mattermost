@@ -11,9 +11,10 @@ import Permissions from 'mattermost-redux/constants/permissions';
 import {getConfig, getLicense} from 'mattermost-redux/selectors/entities/general';
 import {getAssociatedGroupsForReference} from 'mattermost-redux/selectors/entities/groups';
 import {makeGetProfilesForThread} from 'mattermost-redux/selectors/entities/posts';
+import {getTeammateNameDisplaySetting} from 'mattermost-redux/selectors/entities/preferences';
 import {haveIChannelPermission} from 'mattermost-redux/selectors/entities/roles';
 import {getCurrentTeamId} from 'mattermost-redux/selectors/entities/teams';
-import {getCurrentUserId} from 'mattermost-redux/selectors/entities/users';
+import {getCurrentUserId, getUsersByUsername} from 'mattermost-redux/selectors/entities/users';
 
 import {autocompleteChannels} from 'actions/channel_actions';
 import {autocompleteUsersInChannel} from 'actions/views/channel';
@@ -47,6 +48,8 @@ const makeMapStateToProps = () => {
             autocompleteGroups,
             priorityProfiles: getProfilesForThread(state, ownProps.rootId ?? ''),
             delayChannelAutocomplete: getConfig(state).DelayChannelAutocomplete === 'true',
+            usersByUsername: getUsersByUsername(state),
+            teammateNameDisplay: getTeammateNameDisplaySetting(state),
         };
     };
 };

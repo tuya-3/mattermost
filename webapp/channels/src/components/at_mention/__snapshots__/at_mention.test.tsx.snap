@@ -2,7 +2,7 @@
 
 exports[`components/AtMention should match snapshot when mentioning a group followed by punctuation 1`] = `
 <Fragment>
-  <UserGroupPopoverController
+  <MockUserGroupPopover
     group={
       Object {
         "allow_reference": true,
@@ -29,14 +29,14 @@ exports[`components/AtMention should match snapshot when mentioning a group foll
     >
       @developers
     </a>
-  </UserGroupPopoverController>
+  </MockUserGroupPopover>
   .
 </Fragment>
 `;
 
 exports[`components/AtMention should match snapshot when mentioning a group that is allowed reference 1`] = `
 <Fragment>
-  <UserGroupPopoverController
+  <MockUserGroupPopover
     group={
       Object {
         "allow_reference": true,
@@ -63,7 +63,7 @@ exports[`components/AtMention should match snapshot when mentioning a group that
     >
       @developers
     </a>
-  </UserGroupPopoverController>
+  </MockUserGroupPopover>
 </Fragment>
 `;
 
@@ -93,7 +93,7 @@ exports[`components/AtMention should match snapshot when mentioning all with mix
 
 exports[`components/AtMention should match snapshot when mentioning current user 1`] = `
 <Fragment>
-  <ProfilePopoverController
+  <MockProfilePopover
     returnFocus={[Function]}
     src="/api/v4/users/abc1/image"
     triggerComponentAs="button"
@@ -105,13 +105,13 @@ exports[`components/AtMention should match snapshot when mentioning current user
     >
       @First Last
     </span>
-  </ProfilePopoverController>
+  </MockProfilePopover>
 </Fragment>
 `;
 
 exports[`components/AtMention should match snapshot when mentioning user 1`] = `
 <Fragment>
-  <ProfilePopoverController
+  <MockProfilePopover
     returnFocus={[Function]}
     src="/api/v4/users/abc2/image"
     triggerComponentAs="button"
@@ -123,13 +123,13 @@ exports[`components/AtMention should match snapshot when mentioning user 1`] = `
     >
       @Nick
     </span>
-  </ProfilePopoverController>
+  </MockProfilePopover>
 </Fragment>
 `;
 
 exports[`components/AtMention should match snapshot when mentioning user containing and followed by punctuation 1`] = `
 <Fragment>
-  <ProfilePopoverController
+  <MockProfilePopover
     returnFocus={[Function]}
     src="/api/v4/users/abc3/image"
     triggerComponentAs="button"
@@ -141,14 +141,14 @@ exports[`components/AtMention should match snapshot when mentioning user contain
     >
       @Dot Matrix
     </span>
-  </ProfilePopoverController>
+  </MockProfilePopover>
   .
 </Fragment>
 `;
 
 exports[`components/AtMention should match snapshot when mentioning user containing punctuation 1`] = `
 <Fragment>
-  <ProfilePopoverController
+  <MockProfilePopover
     returnFocus={[Function]}
     src="/api/v4/users/abc3/image"
     triggerComponentAs="button"
@@ -160,13 +160,13 @@ exports[`components/AtMention should match snapshot when mentioning user contain
     >
       @Dot Matrix
     </span>
-  </ProfilePopoverController>
+  </MockProfilePopover>
 </Fragment>
 `;
 
 exports[`components/AtMention should match snapshot when mentioning user followed by punctuation 1`] = `
 <Fragment>
-  <ProfilePopoverController
+  <MockProfilePopover
     returnFocus={[Function]}
     src="/api/v4/users/abc2/image"
     triggerComponentAs="button"
@@ -178,14 +178,14 @@ exports[`components/AtMention should match snapshot when mentioning user followe
     >
       @Nick
     </span>
-  </ProfilePopoverController>
+  </MockProfilePopover>
   ...
 </Fragment>
 `;
 
 exports[`components/AtMention should match snapshot when mentioning user with different teammate name display setting 1`] = `
 <Fragment>
-  <ProfilePopoverController
+  <MockProfilePopover
     returnFocus={[Function]}
     src="/api/v4/users/abc2/image"
     triggerComponentAs="button"
@@ -197,13 +197,13 @@ exports[`components/AtMention should match snapshot when mentioning user with di
     >
       @user1
     </span>
-  </ProfilePopoverController>
+  </MockProfilePopover>
 </Fragment>
 `;
 
 exports[`components/AtMention should match snapshot when mentioning user with mixed case 1`] = `
 <Fragment>
-  <ProfilePopoverController
+  <MockProfilePopover
     returnFocus={[Function]}
     src="/api/v4/users/abc2/image"
     triggerComponentAs="button"
@@ -215,7 +215,7 @@ exports[`components/AtMention should match snapshot when mentioning user with mi
     >
       @Nick
     </span>
-  </ProfilePopoverController>
+  </MockProfilePopover>
 </Fragment>
 `;
 

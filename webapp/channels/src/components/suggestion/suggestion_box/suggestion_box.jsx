@@ -162,7 +162,6 @@ export default class SuggestionBox extends React.PureComponent {
         maxLength: PropTypes.string,
         delayInputUpdate: PropTypes.bool,
         spellCheck: PropTypes.string,
-        onMouseUp: PropTypes.func,
         onKeyUp: PropTypes.func,
         onHeightChange: PropTypes.func,
         onWidthChange: PropTypes.func,
@@ -395,9 +394,27 @@ export default class SuggestionBox extends React.PureComponent {
             return;
         }
 
-        const suffix = text.substring(caret);
+        // Check if this is a mention term and convert to full name if necessary
+        let finalTerm = term;
+        if (term.startsWith('@')) {
+            const username = term.substring(1); // Remove @ symbol
 
-        const newValue = prefix + term + ' ' + suffix;
+            // Find the user item in our current suggestions
+            const userItem = this.state.items.find((item) =>
+                item.username === username || (item.name && item.name === username),
+            );
+
+            if (userItem && userItem.username) {
+                // This is a user mention, we'll keep it as username for now
+                // The MentionOverlay will handle the display transformation
+                finalTerm = term; // Keep original @username format
+            }
+        }
+
+        const suffix = text.substring(caret);
+        const newValue = prefix + finalTerm + ' ' + suffix;
+        const targetCaretPosition = prefix.length + finalTerm.length + 1;
+
         textbox.value = newValue;
 
         if (this.props.onChange) {
@@ -413,7 +430,7 @@ export default class SuggestionBox extends React.PureComponent {
         // set the caret position after the next rendering
         window.requestAnimationFrame(() => {
             if (textbox.value === newValue) {
-                Utils.setCaretPosition(textbox, prefix.length + term.length + 1);
+                Utils.setCaretPosition(textbox, targetCaretPosition);
             }
         });
     };
@@ -816,24 +833,38 @@ export default class SuggestionBox extends React.PureComponent {
                 ref={this.setContainerRef}
                 className={this.props.containerClass}
             >
-                <QuickInput
-                    ref={this.inputRef}
-                    autoComplete='off'
-                    {...props}
-                    aria-controls='suggestionList'
-                    role='combobox'
-                    aria-activedescendant={this.state.selection ? `suggestionList_item_${this.state.selection}` : undefined}
-                    aria-autocomplete='list'
-                    aria-expanded={(this.state.focused || this.props.forceSuggestionsWhenBlur) && this.state.items.length > 0}
-                    onInput={this.handleChange}
-                    onCompositionStart={this.handleCompositionStart}
-                    onCompositionUpdate={this.handleCompositionUpdate}
-                    onCompositionEnd={this.handleCompositionEnd}
-                    onKeyDown={this.handleKeyDown}
-                />
-                {(this.props.openWhenEmpty || this.props.value.length >= this.props.requiredCharacters) && this.state.presentationType === 'text' && (
+                <div className='suggestion-box-input-wrapper'>
+                    <QuickInput
+                        ref={this.inputRef}
+                        autoComplete='off'
+                        spellCheck={false}
+                        autoCorrect='off'
+                        autoCapitalize='off'
+                        {...props}
+                        style={{
+                            ...props.style,
+                            caretColor: 'transparent',
+                            color: 'transparent',
+                            WebkitTextFillColor: 'transparent',
+                            opacity: 0.01, // Almost invisible but still interactive
+                            position: 'relative',
+                            zIndex: 1,
+                        }}
+                        aria-controls='suggestionList'
+                        role='combobox'
+                        {...(this.state.selection && {'aria-activedescendant': `suggestionList_item_${this.state.selection}`})}
+                        aria-autocomplete='list'
+                        aria-expanded={this.state.focused && this.state.items.length > 0 && !this.state.cleared}
+                        onInput={this.handleChange}
+                        onCompositionStart={this.handleCompositionStart}
+                        onCompositionUpdate={this.handleCompositionUpdate}
+                        onCompositionEnd={this.handleCompositionEnd}
+                        onKeyDown={this.handleKeyDown}
+                    />
+                </div>
+                {(this.props.openWhenEmpty || this.props.value.length >= this.props.requiredCharacters) && this.state.presentationType === 'text' && (this.state.items.length > 0 || this.props.openWhenEmpty) && (
                     <SuggestionListComponent
-                        open={this.state.focused || this.props.forceSuggestionsWhenBlur}
+                        open={(this.state.focused || this.props.forceSuggestionsWhenBlur) && !this.state.cleared}
                         pretext={this.pretext}
                         position={this.getListPosition(listPosition)}
                         renderDividers={renderDividers}

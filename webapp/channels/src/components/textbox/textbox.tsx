@@ -19,6 +19,7 @@ import ChannelMentionProvider from 'components/suggestion/channel_mention_provid
 import AppCommandProvider from 'components/suggestion/command_provider/app_provider';
 import CommandProvider from 'components/suggestion/command_provider/command_provider';
 import EmoticonProvider from 'components/suggestion/emoticon_provider';
+import MentionOverlay from 'components/suggestion/mention_overlay';
 import type Provider from 'components/suggestion/provider';
 import SuggestionBox from 'components/suggestion/suggestion_box';
 import type SuggestionBoxComponent from 'components/suggestion/suggestion_box/suggestion_box';
@@ -27,6 +28,8 @@ import SuggestionList from 'components/suggestion/suggestion_list';
 import * as Utils from 'utils/utils';
 
 import type {TextboxElement} from './index';
+
+import './textbox_mention_overlay.scss';
 
 const ALL = ['all'];
 
@@ -74,6 +77,8 @@ export type Props = {
     hasLabels?: boolean;
     hasError?: boolean;
     isInEditMode?: boolean;
+    teammateNameDisplay?: string;
+    usersByUsername?: Record<string, UserProfile>;
 };
 
 const VISIBLE = {visibility: 'visible'};
@@ -84,6 +89,10 @@ export default class Textbox extends React.PureComponent<Props> {
     private readonly wrapper: React.RefObject<HTMLDivElement>;
     private readonly message: React.RefObject<SuggestionBoxComponent>;
     private readonly preview: React.RefObject<HTMLDivElement>;
+
+    state = {
+        caretPosition: 0,
+    };
 
     static defaultProps = {
         supportsCommands: true,
@@ -133,6 +142,11 @@ export default class Textbox extends React.PureComponent<Props> {
     }
 
     handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Update caret position in state
+        this.setState({
+            caretPosition: e.target.selectionEnd || 0,
+        });
+
         this.props.onChange(e);
     };
 
@@ -228,9 +242,46 @@ export default class Textbox extends React.PureComponent<Props> {
         this.props.onKeyDown?.(e as KeyboardEvent<TextboxElement>);
     };
 
-    handleMouseUp = (e: MouseEvent<TextboxElement>) => this.props.onMouseUp?.(e);
+    handleKeyUp = (e: KeyboardEvent<TextboxElement>) => {
+        // Update caret position on key events
+        const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+        const newCaretPosition = target.selectionEnd || 0;
 
-    handleKeyUp = (e: KeyboardEvent<TextboxElement>) => this.props.onKeyUp?.(e);
+        this.setState({
+            caretPosition: newCaretPosition,
+        });
+
+        this.props.onKeyUp?.(e);
+    };
+
+    handleMouseUp = (e: MouseEvent<TextboxElement>) => {
+        // Update caret position on mouse events (clicking to move cursor)
+        const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+        const newCaretPosition = target.selectionEnd || 0;
+
+        this.setState({
+            caretPosition: newCaretPosition,
+        });
+
+        this.props.onMouseUp?.(e);
+    };
+
+    handleCursorPositionChange = (position: number) => {
+        // Update caret position from MentionOverlay click events
+        this.setState({
+            caretPosition: position,
+        });
+
+        // Also update the actual input cursor position
+        if (this.message.current) {
+            const textbox = this.message.current.getTextbox();
+
+            if (textbox) {
+                textbox.setSelectionRange(position, position);
+                textbox.focus();
+            }
+        }
+    };
 
     // adding in the HTMLDivElement to support event handling in preview state
     handleBlur = (e: FocusEvent<TextboxElement | HTMLDivElement>) => {
@@ -239,12 +290,30 @@ export default class Textbox extends React.PureComponent<Props> {
     };
 
     getInputBox = () => {
-        return this.message.current?.getTextbox();
+        // Safety checks for React ref access
+        if (!this.message || !this.message.current) {
+            return null;
+        }
+
+        const component = this.message.current;
+
+        // Check if component has getTextbox method (either direct SuggestionBox or SuggestionBoxWithOverlay)
+        if (typeof component.getTextbox === 'function') {
+            try {
+                return component.getTextbox();
+            } catch (error) {
+                // Error calling getTextbox - component may not have this method
+                return null;
+            }
+        }
+
+        // Component doesn't have getTextbox method
+        return null;
     };
 
     focus = () => {
         const textbox = this.getInputBox();
-        if (textbox) {
+        if (textbox && typeof textbox.focus === 'function') {
             textbox.focus();
             Utils.placeCaretAtEnd(textbox);
             setTimeout(() => {
@@ -299,37 +368,57 @@ export default class Textbox extends React.PureComponent<Props> {
                         imageProps={{hideUtilities: true}}
                     />
                 </div>
-                <SuggestionBox
-                    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                    // @ts-ignore
-                    ref={this.message}
-                    id={this.props.id}
-                    className={textboxClassName}
-                    spellCheck='true'
-                    placeholder={this.props.createMessage}
-                    onChange={this.handleChange}
-                    onKeyPress={this.props.onKeyPress}
-                    onKeyDown={this.handleKeyDown}
-                    onMouseUp={this.handleMouseUp}
-                    onKeyUp={this.handleKeyUp}
-                    onComposition={this.props.onComposition}
-                    onBlur={this.handleBlur}
-                    onFocus={this.props.onFocus}
-                    onHeightChange={this.props.onHeightChange}
-                    onWidthChange={this.props.onWidthChange}
-                    onPaste={this.props.onPaste}
-                    style={this.getStyle()}
-                    inputComponent={this.props.inputComponent}
-                    listComponent={this.props.suggestionList}
-                    listPosition={this.props.suggestionListPosition}
-                    providers={this.suggestionProviders}
-                    value={this.props.value}
-                    renderDividers={ALL}
-                    disabled={this.props.disabled}
-                    contextId={this.props.channelId}
-                    openWhenEmpty={this.props.openWhenEmpty}
-                    alignWithTextbox={this.props.alignWithTextbox}
-                />
+                <div style={{position: 'relative'}}>
+                    <MentionOverlay
+                        value={this.props.value}
+                        className='textbox-mention-overlay'
+                        cursorPosition={this.state.caretPosition}
+                        showCursor={true}
+                        onCursorPositionChange={this.handleCursorPositionChange}
+                    />
+                    <SuggestionBox
+                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                        // @ts-ignore
+                        ref={this.message}
+                        id={this.props.id}
+                        className={`${textboxClassName} textbox-with-mention-overlay`}
+                        spellCheck='true'
+                        placeholder={this.props.createMessage}
+                        onChange={this.handleChange}
+                        onKeyPress={this.props.onKeyPress}
+                        onKeyDown={this.handleKeyDown}
+                        onMouseUp={this.handleMouseUp}
+                        onKeyUp={this.handleKeyUp}
+                        onComposition={this.props.onComposition}
+                        onBlur={this.handleBlur}
+                        onFocus={this.props.onFocus}
+                        onHeightChange={this.props.onHeightChange}
+                        onWidthChange={this.props.onWidthChange}
+                        onPaste={this.props.onPaste}
+                        style={{
+                            ...this.getStyle(),
+                            color: 'transparent',
+                            caretColor: 'transparent',
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            textShadow: 'none',
+                            WebkitTextFillColor: 'transparent',
+                            position: 'relative',
+                            zIndex: 5,
+                        }}
+                        inputComponent={this.props.inputComponent}
+                        listComponent={this.props.suggestionList}
+                        listPosition={this.props.suggestionListPosition}
+                        providers={this.suggestionProviders}
+                        value={this.props.value}
+                        renderDividers={ALL}
+                        disabled={this.props.disabled}
+                        contextId={this.props.channelId}
+                        openWhenEmpty={this.props.openWhenEmpty}
+                        alignWithTextbox={this.props.alignWithTextbox}
+                    />
+                </div>
             </div>
         );
     }
