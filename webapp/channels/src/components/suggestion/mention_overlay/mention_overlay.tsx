@@ -27,7 +27,7 @@ const POSITION_OFFSETS = {
 } as const;
 
 export type Props = {
-    value: string | null | undefined | any;
+    value: string | null | undefined;
     className?: string;
     cursorPosition?: number;
     showCursor?: boolean;
@@ -83,7 +83,7 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
         // Calculate line number based on click Y position
         const lineNumber = Math.floor(clickY / POSITION_OFFSETS.lineHeight);
         const lines = stringValue.split('\n');
-        
+
         if (lineNumber >= lines.length) {
             // Clicked below the last line, set cursor to end of text
             onCursorPositionChange(stringValue.length);
@@ -102,26 +102,17 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
 
         // Parse the current line to understand mentions vs text
         const parsedParts = parseMentionText(stringValue);
-        let currentLineStartInParts = 0;
-        let currentLineEndInParts = 0;
         let inputPos = 0;
 
         // Find which parts belong to the current line
         for (const part of parsedParts) {
-            const partLength = part.type === 'mention' 
-                ? (part.range ? (part.range.end - part.range.start) : (part.content.length + 1))
-                : part.content.length;
-            
-            const partEndPos = inputPos + partLength;
-            
-            if (inputPos <= lineStartPosition && partEndPos > lineStartPosition) {
-                currentLineStartInParts = inputPos;
+            let partLength: number;
+            if (part.type === 'mention') {
+                partLength = part.range ? (part.range.end - part.range.start) : (part.content.length + 1);
+            } else {
+                partLength = part.content.length;
             }
-            if (inputPos < lineStartPosition + currentLine.length && partEndPos >= lineStartPosition + currentLine.length) {
-                currentLineEndInParts = partEndPos;
-                break;
-            }
-            
+
             inputPos += partLength;
         }
 
@@ -136,45 +127,40 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
         }
 
         // Build the visual representation of the current line with mentions
-        let visualContent = '';
         inputPos = 0;
         for (const part of parsedParts) {
-            const partLength = part.type === 'mention' 
-                ? (part.range ? (part.range.end - part.range.start) : (part.content.length + 1))
-                : part.content.length;
-            
+            let partLength: number;
+            if (part.type === 'mention') {
+                partLength = part.range ? (part.range.end - part.range.start) : (part.content.length + 1);
+            } else {
+                partLength = part.content.length;
+            }
+
             const partEndPos = inputPos + partLength;
-            
+
             // If this part intersects with the current line
             if (inputPos < lineStartPosition + currentLine.length && partEndPos > lineStartPosition) {
                 if (part.type === 'mention') {
-                    const user = usersByUsername[part.content];
-                    const displayName = user 
-                        ? displayUsername(user, teammateNameDisplay) 
-                        : part.content;
                     const mentionSpan = createMentionSpan(`@${part.content}`, usersByUsername, teammateNameDisplay);
                     tempDiv.appendChild(mentionSpan);
-                    visualContent += `@${displayName}`;
                 } else {
                     // Handle text that might be partially on this line
                     const startInPart = Math.max(0, lineStartPosition - inputPos);
                     const endInPart = Math.min(part.content.length, (lineStartPosition + currentLine.length) - inputPos);
                     const textContent = part.content.substring(startInPart, endInPart);
-                    
+
                     if (textContent) {
                         const textNode = document.createTextNode(textContent);
                         tempDiv.appendChild(textNode);
-                        visualContent += textContent;
                     }
                 }
             }
-            
+
             inputPos += partLength;
         }
-        
+
         // Use range to find the character position closest to the click
         const range = document.createRange();
-        let bestPosition = 0;
         let bestDistance = Infinity;
         let bestInputPosition = lineStartPosition;
 
@@ -186,19 +172,18 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                     try {
                         range.setStart(node, i);
                         range.setEnd(node, i);
-                        
+
                         if (typeof range.getBoundingClientRect === 'function') {
                             const rangeRect = range.getBoundingClientRect();
                             const distance = Math.abs(rangeRect.left - (rect.left + POSITION_OFFSETS.left + clickX));
-                            
+
                             if (distance < bestDistance) {
                                 bestDistance = distance;
-                                bestPosition = i;
                                 bestInputPosition = currentInputPos + i;
                             }
                         }
                     } catch (e) {
-                        console.warn('Range setting failed', e);
+                        // Range setting failed, skip this position
                     }
                 }
             } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -211,20 +196,19 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                             if (element.firstChild) {
                                 range.setStart(element.firstChild, Math.min(i, mentionText.length));
                                 range.setEnd(element.firstChild, Math.min(i, mentionText.length));
-                                
+
                                 if (typeof range.getBoundingClientRect === 'function') {
                                     const rangeRect = range.getBoundingClientRect();
                                     const distance = Math.abs(rangeRect.left - (rect.left + POSITION_OFFSETS.left + clickX));
-                                    
+
                                     if (distance < bestDistance) {
                                         bestDistance = distance;
-                                        bestPosition = i;
                                         bestInputPosition = currentInputPos + i;
                                     }
                                 }
                             }
                         } catch (e) {
-                            console.warn('Mention range setting failed', e);
+                            // Range setting failed, skip this position
                         }
                     }
                 }
@@ -235,7 +219,7 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
         let nodeInputPos = lineStartPosition;
         for (const childNode of tempDiv.childNodes) {
             walkNode(childNode, nodeInputPos);
-            
+
             // Update position for next node
             if (childNode.nodeType === Node.TEXT_NODE) {
                 nodeInputPos += (childNode.textContent || '').length;
@@ -245,6 +229,7 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                     // Find the original mention length
                     const mentionText = element.textContent || '';
                     const username = mentionText.startsWith('@') ? mentionText.substring(1) : mentionText;
+
                     // Original mention length is @username format
                     nodeInputPos += username.length + 1;
                 } else {
@@ -260,7 +245,7 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
 
         // Use the best input position we found
         const clampedPosition = Math.min(bestInputPosition, stringValue.length);
-        
+
         onCursorPositionChange(clampedPosition);
     };
 
@@ -303,7 +288,7 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
         }
 
         const parsedParts = parseMentionText(stringValue);
-        
+
         const overlayMentions = overlayRef.current.querySelectorAll('.mention-highlight');
         const position = calculateCursorPosition(
             cursorPosition,
@@ -324,13 +309,16 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
         return parts.map((part, index) => {
             if (part.type === 'mention') {
                 const user = usersByUsername[part.content];
-                const displayName = user ?
-                    displayUsername(user, teammateNameDisplay) :
-                    part.content;
+                let displayName: string;
+                if (user) {
+                    displayName = displayUsername(user, teammateNameDisplay);
+                } else {
+                    displayName = part.content;
+                }
 
                 return (
                     <span
-                        key={`mention-${index}`}
+                        key={`mention-${part.content}-${index}`}
                         className='mention-highlight'
                         style={{
                             display: 'inline',
@@ -355,11 +343,11 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
             lines.forEach((line, lineIndex) => {
                 if (lineIndex > 0) {
                     // Add line break before each line except the first
-                    elements.push(<br key={`br-${index}-${lineIndex}`}/>);
+                    elements.push(<br key={`br-${index}-${part.content}-${lineIndex}`}/>);
                 }
                 if (line) {
                     elements.push(
-                        <React.Fragment key={`text-${index}-${lineIndex}`}>
+                        <React.Fragment key={`text-${index}-${part.content}-${lineIndex}`}>
                             {line}
                         </React.Fragment>,
                     );
@@ -367,7 +355,7 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
             });
 
             return (
-                <React.Fragment key={`text-${index}`}>
+                <React.Fragment key={`text-part-${index}-${part.content}`}>
                     {elements}
                 </React.Fragment>
             );
@@ -393,6 +381,13 @@ const MentionOverlay: React.NamedExoticComponent<Props> & {
                     zIndex: 10,
                 }}
                 onClick={handleOverlayClick}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        handleOverlayClick(e as any);
+                    }
+                }}
+                role='textbox'
+                tabIndex={-1}
             >
                 {renderedParts.length > 0 ? renderedParts : stringValue}
                 {showCursor && cursorPosition !== undefined && (
@@ -464,7 +459,12 @@ const createMentionSpan = (content: string, usersByUsername: Record<string, User
     // Extract username from @username format
     const username = content.startsWith('@') ? content.substring(1) : content;
     const user = usersByUsername[username];
-    const displayName = user ? displayUsername(user, teammateNameDisplay) : username;
+    let displayName: string;
+    if (user) {
+        displayName = displayUsername(user, teammateNameDisplay);
+    } else {
+        displayName = username;
+    }
 
     mentionSpan.textContent = `@${displayName}`;
 
@@ -541,18 +541,23 @@ const calculateCursorPosition = (
                     // Calculate position within the mention display
                     const positionInMention = cursorPosition - inputPosition;
                     const user = usersByUsername[part.content];
-                    const displayName = user ? displayUsername(user, teammateNameDisplay) : part.content;
+                    let displayName: string;
+                    if (user) {
+                        displayName = displayUsername(user, teammateNameDisplay);
+                    } else {
+                        displayName = part.content;
+                    }
                     const fullDisplayText = `@${displayName}`;
-                    
+
                     // Calculate proportional position in display text
                     const displayPosition = Math.min(
                         Math.floor((positionInMention / originalMentionLength) * fullDisplayText.length),
-                        fullDisplayText.length
+                        fullDisplayText.length,
                     );
 
                     // Add partial mention text for measurement
                     const partialText = fullDisplayText.substring(0, displayPosition);
-                    
+
                     if (partialText) {
                         // Replace the full mention with partial text
                         tempDiv.removeChild(mentionSpan);
@@ -675,7 +680,7 @@ const calculateCursorPosition = (
     // Calculate position
     const left = width + POSITION_OFFSETS.left; // Position at the end of content
     const top = (lineNumber * POSITION_OFFSETS.lineHeight) + POSITION_OFFSETS.top; // Line height + padding offset
-    
+
     return {left, top};
 };
 

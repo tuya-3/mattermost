@@ -275,7 +275,7 @@ export default class Textbox extends React.PureComponent<Props> {
         // Also update the actual input cursor position
         if (this.message.current) {
             const textbox = this.message.current.getTextbox();
-            
+
             if (textbox) {
                 textbox.setSelectionRange(position, position);
                 textbox.focus();
