@@ -163,3 +163,10 @@ docker-compose.override.yaml
 **/CLAUDE.local.md
 CLAUDE.md
 .cursorrules
+
+# Personal work directory
+my_work/
+server/users.bleve/
+server/channels.bleve/
+server/files.bleve/
+server/posts.bleve/
