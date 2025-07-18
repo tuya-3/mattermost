@@ -415,6 +415,7 @@ const AdvancedTextEditor = ({
     const handleSubmitWithErrorHandling = useCallback((submittingDraft?: PostDraft, schedulingInfo?: SchedulingInfo, options?: CreatePostOptions) => {
         // 送信時にTextboxから生の値（username形式）を取得
         let finalDraft = submittingDraft || draft;
+
         if (textboxRef.current && typeof textboxRef.current.getRawValue === 'function') {
             const rawValue = textboxRef.current.getRawValue();
             finalDraft = {
@@ -858,14 +859,14 @@ const AdvancedTextEditor = ({
                             disabled={isDisabled}
                             characterLimit={maxPostSize}
                             preview={showPreview}
+                            usersByUsername={usersByUsername}
+                            teammateNameDisplay={teammateNameDisplay}
+                            mentionKeys={mentionKeys}
                             badConnection={badConnection}
                             useChannelMentions={useChannelMentions}
                             rootId={rootId}
                             onWidthChange={handleWidthChange}
                             isInEditMode={isInEditMode}
-                            usersByUsername={usersByUsername}
-                            teammateNameDisplay={teammateNameDisplay}
-                            mentionKeys={mentionKeys}
                         />
                         {attachmentPreview}
                         {!isDisabled && (showFormattingBar || showPreview) && (
