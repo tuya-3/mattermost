@@ -23,6 +23,7 @@ type OwnProps = {
     disableHighlight?: boolean;
     disableGroupHighlight?: boolean;
     fetchMissingUsers?: boolean;
+    displayMode?: 'username' | 'fullname';
 }
 
 type Props = OwnProps & PropsFromRedux;
@@ -54,7 +55,9 @@ const AtMention = (props: Props) => {
 
     if (user) {
         const userMentionNameSuffix = props.mentionName.substring(user.username.length);
-        const userDisplayName = displayUsername(user, props.teammateNameDisplay);
+        const userDisplayName = props.displayMode === 'username' ?
+            user.username :
+            displayUsername(user, props.teammateNameDisplay);
         const highlightMention = !props.disableHighlight && user.id === props.currentUserId;
 
         return (
