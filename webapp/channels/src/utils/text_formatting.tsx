@@ -293,8 +293,18 @@ const DEFAULT_OPTIONS: TextFormattingOptions = {
 * Additional CJK and Hangul compatibility characters: \u2de0-\u2dff
 * Thai characters: \u0e00-\u0e7f
 **/
-// eslint-disable-next-line no-misleading-character-class
-export const cjkrPattern = /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf\uac00-\ud7a3\u1100-\u11ff\u3130-\u318f\u0400-\u04ff\u0500-\u052f\u2de0-\u2dff\u0e00-\u0e7f]/;
+// Using Unicode property escapes for better cross-environment compatibility
+// Fallback to character class ranges for older environments
+export const cjkrPattern = (() => {
+    try {
+        // Try using Unicode property escapes first (more reliable)
+        return new RegExp('[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}\\p{Script=Cyrillic}\\p{Script=Thai}\\u3000-\\u303f\\uff00-\\uff9f]', 'u');
+    } catch (e) {
+        // Fallback to character class ranges for older Node.js versions
+        // eslint-disable-next-line no-misleading-character-class
+        return /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf\uac00-\ud7a3\u1100-\u11ff\u3130-\u318f\u0400-\u04ff\u0500-\u052f\u2de0-\u2dff\u0e00-\u0e7f]/;
+    }
+})();
 
 export function formatText(
     text: string,
@@ -901,34 +911,17 @@ export function highlightCurrentMentions(
         fullMatch: string,
         prefix: string,
         mention: string,
+        suffix = '',
     ) {
-        // Additional boundary check: don't highlight if mention is followed by alphanumeric or CJK characters
-        const mentionEndIndex = output.indexOf(fullMatch) + fullMatch.length;
-        const nextChar = output[mentionEndIndex];
-
-        // Apply unified boundary check for all mentions
-        // Invalid boundary if characters (alphanumeric or CJK) follow without space
-        // Punctuation is treated as valid boundary
-        // Japanese characters (CJK) are treated as invalid boundary
-        const isValidBoundary = !nextChar || (/\s/).test(nextChar) || punctuationRegex.test(nextChar);
-
-        // Additional check: if nextChar is a CJK character, it's NOT a valid boundary
-        if (nextChar && (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/).test(nextChar)) {
-            return fullMatch;
-        }
-
-        if (!isValidBoundary) {
-            // Don't highlight if boundary is invalid
-            return fullMatch;
-        }
-
         const index = tokens.size;
         const alias = `$MM_SELFMENTION${index}$`;
+
         tokens.set(alias, {
             value: `<span class="mention--highlight">${mention}</span>`,
             originalText: mention,
         });
-        return prefix + alias;
+
+        return prefix + alias + suffix;
     }
 
     for (const mention of mentionKeys) {
@@ -943,11 +936,13 @@ export function highlightCurrentMentions(
 
         let pattern;
         if (cjkrPattern.test(mention.key)) {
-            // Perform strict boundary check for CJK characters - don't match if followed by alphanumeric or CJK characters (unified behavior)
-            pattern = new RegExp(`(^|\\s|[^\\w\\u3040-\\u309F\\u30A0-\\u30FF\\u4E00-\\u9FAF])(${escapeRegex(mention.key)})(?=\\s|[^\\w\\u3040-\\u309F\\u30A0-\\u30FF\\u4E00-\\u9FAF]|$)`, flags);
+            // In the case of CJK mention key, even if there's no delimiters (such as spaces) at both ends of a word, it is recognized as a mention key
+            pattern = new RegExp(`()(${escapeRegex(mention.key)})()`, flags);
         } else {
-            // Apply same strict boundary check for ASCII characters
-            pattern = new RegExp(`(^|\\s|[^\\w\\u3040-\\u309F\\u30A0-\\u30FF\\u4E00-\\u9FAF])(${escapeRegex(mention.key)})(?=\\s|[^\\w\\u3040-\\u309F\\u30A0-\\u30FF\\u4E00-\\u9FAF]|$)`, flags);
+            pattern = new RegExp(
+                `(^|\\W)(${escapeRegex(mention.key)})(\\b|_+\\b)`,
+                flags,
+            );
         }
         output = output.replace(pattern, replaceCurrentMentionWithToken);
     }
