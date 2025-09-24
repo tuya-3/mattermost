@@ -3944,7 +3944,7 @@
   "create_team.team_url.unavailable": "このURLは既に使用されているか使用できません。他のものを試してください。",
   "create_team.team_url.webAddress": "あなたの新しいチームのウェブアドレスを選択してください:",
   "custom_emoji.header": "カスタム絵文字",
-  "custom_status.expiry.until": "{time} まで",
+  "custom_status.expiry.until": "{time}まで",
   "custom_status.expiry_dropdown.choose_date_and_time": "日時の選択",
   "custom_status.expiry_dropdown.clear_after": "解除予定",
   "custom_status.expiry_dropdown.date_and_time": "任意の日付と時間",
