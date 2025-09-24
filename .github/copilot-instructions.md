@@ -8,9 +8,9 @@ For immediate verification that the development environment is functional, run t
 
 1. **Verify prerequisites:**
    ```bash
-   go version        # Should show go1.24.7+
-   node --version    # Should show v20.11+ 
-   npm --version     # Should show 9.0.0+ or 10.0.0+
+   go version        # Should show go version from server/.go-version
+   node --version    # Should show Node.js version from .nvmrc 
+   npm --version     # Should meet requirements in webapp/package.json engines
    ```
 
 2. **Essential build test (10 minutes total):**
@@ -33,9 +33,9 @@ Mattermost is a collaboration platform written in Go (server) and React/TypeScri
 ## Prerequisites and Setup
 
 ### Required Software Versions
-- **Go**: Version 1.24.5 (check with `cat server/.go-version`)
-- **Node.js**: Version 20.11 (check with `cat .nvmrc`)  
-- **npm**: Version 9.0.0+ or 10.0.0+
+- **Go**: Version specified in `server/.go-version` (check with `cat server/.go-version`)
+- **Node.js**: Version specified in `.nvmrc` (check with `cat .nvmrc`)  
+- **npm**: Version requirements specified in `webapp/package.json` engines section (check with `cat webapp/package.json | grep -A 3 engines`)
 - **Docker**: Required for local database services
 - **Make**: Required for build automation
 
@@ -217,7 +217,7 @@ Always validate changes by testing these core workflows:
 
 ### Build Issues
 - **"go.work file not found"**: Run `cd server && make setup-go-work`
-- **Node.js version mismatch**: Use Node.js version specified in `.nvmrc` (20.11)
+- **Node.js version mismatch**: Use Node.js version specified in `.nvmrc`
 - **npm install failures**: Delete `node_modules` and `package-lock.json`, then retry
 - **Docker service failures**: Check Docker daemon is running and ports 5432, 6379, 9000 are available
 
