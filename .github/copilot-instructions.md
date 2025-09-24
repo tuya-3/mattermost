@@ -2,6 +2,25 @@
 
 Always reference these instructions first and fallback to search or bash commands only when you encounter unexpected information that does not match the info here.
 
+## Quick Start Verification
+
+For immediate verification that the development environment is functional, run these commands in order:
+
+1. **Verify prerequisites:**
+   ```bash
+   go version        # Should show go1.24.7+
+   node --version    # Should show v20.11+ 
+   npm --version     # Should show 9.0.0+ or 10.0.0+
+   ```
+
+2. **Essential build test (10 minutes total):**
+   ```bash
+   cd server && make setup-go-work              # ~1 second
+   cd ../webapp && npm install                  # ~5 minutes
+   cd ../server && make prepackaged-binaries    # ~3 minutes  
+   ./bin/mmctl version                          # Should show version info
+   ```
+
 ## Overview
 
 Mattermost is a collaboration platform written in Go (server) and React/TypeScript (webapp), distributed as a single Linux binary that relies on PostgreSQL. The repository consists of multiple major components:
@@ -75,12 +94,19 @@ Run these commands in order to set up a fresh development environment:
 ### E2E Testing (Playwright)
 Navigate to `e2e-tests/playwright/` for all E2E commands:
 
-- **Install dependencies:** `npm ci --ignore-scripts` then `npx playwright install`
+- **Install dependencies:** 
+  ```bash
+  npm ci --ignore-scripts    # Install npm packages without browser downloads
+  npm run build             # Build the test library (3 seconds)
+  npx playwright install    # Install browser binaries (may fail, see known issues)
+  ```
 - **Run specific test:** `npm run test -- <test-name>`
 - **Run all tests:** `npm run test` (excludes visual tests)
 - **Run CI tests:** `npm run test:ci` (Chrome only, excludes visual)
-- **Visual tests:** `npm run test -- visual` (requires Docker container)
+- **Visual tests:** `npm run test -- visual` (requires Docker container for consistency)
 - **UI mode:** `npm run playwright-ui`
+
+Note: E2E tests are designed to run against a live Mattermost server. See existing documentation in `e2e-tests/playwright/README.md` for server setup options.
 
 ## Build Timing and Warnings
 
@@ -93,10 +119,11 @@ Navigate to `e2e-tests/playwright/` for all E2E commands:
 - **Docker service startup**: 3-5 minutes (set timeout to 600+ seconds)
 
 ### Expected Build Warnings
-- npm security vulnerabilities during `npm install` are expected
-- Webpack asset size warnings during webapp build are expected
-- Sass deprecation warnings are expected
-- Go dependency downloads on first build are expected
+- **npm security vulnerabilities** during `npm install` are expected and normal
+- **Webpack asset size warnings** during webapp build are expected and normal
+- **Sass deprecation warnings** are expected and normal
+- **Go dependency downloads** on first build are expected and normal
+- **TypeScript version warnings** in ESLint are expected and normal
 
 ## Validation and Testing
 
@@ -105,20 +132,27 @@ Before considering any changes complete, you MUST:
 
 1. **Build validation:**
    ```bash
-   cd server && make build-linux
-   cd ../webapp && npm run build
+   cd server && make build-linux     # 4 minutes
+   cd ../webapp && npm run build     # 3 minutes
    ```
 
-2. **Lint validation:**
+2. **Binary functionality validation:**
    ```bash
-   cd webapp && npm run check
-   cd ../server && make golangci-lint
+   cd server && ./bin/mattermost version    # Should show version info
+   cd server && ./bin/mmctl version         # Should show mmctl info
    ```
 
-3. **Basic test validation:**
+3. **Lint validation:**
    ```bash
-   cd webapp && npm run test-ci
-   cd ../server && make test-server-quick
+   cd webapp && npm run check        # 1.5 minutes
+   cd webapp && npm run check-types  # 1 minute
+   cd ../server && make golangci-lint # 6 minutes
+   ```
+
+4. **Basic test validation (optional but recommended):**
+   ```bash
+   cd webapp && npm run test-ci      # 10+ minutes. NEVER CANCEL.
+   cd ../server && make test-server-quick  # 5+ minutes. NEVER CANCEL.
    ```
 
 ### Running the Application
@@ -183,19 +217,23 @@ Always validate changes by testing these core workflows:
 
 ### Build Issues
 - **"go.work file not found"**: Run `cd server && make setup-go-work`
-- **Node.js version mismatch**: Use Node.js version specified in `.nvmrc`
+- **Node.js version mismatch**: Use Node.js version specified in `.nvmrc` (20.11)
 - **npm install failures**: Delete `node_modules` and `package-lock.json`, then retry
 - **Docker service failures**: Check Docker daemon is running and ports 5432, 6379, 9000 are available
 
 ### Development Issues  
 - **Changes not reflected**: Restart development servers
-- **Database connection issues**: Run `make start-docker` and wait for services
+- **Database connection issues**: Run `make start-docker` and wait for services (3-5 minutes)
 - **Port conflicts**: Default ports are 8065 (server), 9005 (webpack-dev-server)
 
 ### Testing Issues
-- **E2E test browser install failures**: Use `npm ci --ignore-scripts` then `npx playwright install`
-- **Visual test inconsistencies**: Run visual tests only within Docker containers
+- **E2E test browser install failures**: This is expected in CI environments. Use `npm ci --ignore-scripts` then manually handle browser setup
+- **Visual test inconsistencies**: Run visual tests only within Docker containers for consistency
 - **Test timeouts**: Always set adequate timeouts (20+ minutes for full test suites)
+
+### Known Limitations
+- **Full application testing**: Running the complete app with database requires Docker services which may not work in all environments
+- **E2E browser downloads**: May fail due to network restrictions; fallback to manual setup
 
 ## CI/CD Integration
 
