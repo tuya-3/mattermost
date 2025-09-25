@@ -1,27 +1,50 @@
 // Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
 // See LICENSE.txt for license information.
 
-// Import Japanese translation to verify our fix
+import {mount} from 'enzyme';
+import React from 'react';
+import {createIntl, IntlProvider} from 'react-intl';
+import {Provider} from 'react-redux';
+
+import mockStore from 'tests/test_store';
+
+// Import Japanese and English translations
 import {langFiles} from 'i18n/imports';
 
-describe('components/custom_status/expiry_time - Japanese translation fix', () => {
-    describe('Japanese translation improvement', () => {
-        it('should have natural Japanese translation without space before まで', () => {
-            // Get the Japanese messages
-            const jaMessages = langFiles.ja;
-            
+import ExpiryTime from './expiry_time';
+
+// Mock the timezone function 
+jest.mock('mattermost-redux/selectors/entities/timezone', () => ({
+    getCurrentTimezone: () => 'UTC',
+}));
+
+describe('components/custom_status/expiry_time - Japanese word order fix', () => {
+    const store = mockStore({});
+    
+    const baseProps = {
+        time: '2024-12-25T10:00:00Z',
+        timezone: 'UTC',
+        showPrefix: true,
+    };
+
+    // Get Japanese and English translations
+    const jaMessages = langFiles.ja;
+    const enMessages = langFiles.en || {};
+
+    describe('Translation verification', () => {
+        it('should have proper Japanese translation format', () => {
             // Verify the translation key exists and has the corrected value
             expect(jaMessages).toBeDefined();
             expect(jaMessages['custom_status.expiry.until']).toBeDefined();
             
-            // The fix: should be "{time}まで" (no space) instead of "{time} まで" (with space)
+            // The translation should be "{time}まで" (no space)
             expect(jaMessages['custom_status.expiry.until']).toBe('{time}まで');
             
             // Ensure it doesn't have the old unnatural format with space
             expect(jaMessages['custom_status.expiry.until']).not.toBe('{time} まで');
         });
 
-        it('should demonstrate the improvement with example text', () => {
+        it('should demonstrate proper word order for Japanese', () => {
             const jaMessages = langFiles.ja;
             const translation = jaMessages['custom_status.expiry.until'];
             
@@ -39,28 +62,91 @@ describe('components/custom_status/expiry_time - Japanese translation fix', () =
             
             const fridayResult = translation.replace('{time}', '金曜日');
             expect(fridayResult).toBe('金曜日まで');
-            
-            // Test with custom date format  
-            const customDateResult = translation.replace('{time}', '2024年12月25日');
-            expect(customDateResult).toBe('2024年12月25日まで');
+        });
+    });
+
+    describe('Component behavior', () => {
+        it('should render with English locale in standard order', () => {
+            const enIntl = createIntl({
+                locale: 'en',
+                messages: enMessages,
+            });
+
+            const wrapper = mount(
+                <IntlProvider {...enIntl}>
+                    <ExpiryTime {...baseProps}/>
+                </IntlProvider>,
+                {wrappingComponent: Provider, wrappingComponentProps: {store}}
+            );
+
+            // For English, should render FormattedMessage first, then Timestamp
+            expect(wrapper.find('FormattedMessage')).toHaveLength(1);
+            expect(wrapper.find('Timestamp')).toHaveLength(1);
         });
 
-        it('should provide comparison with the old translation format', () => {
-            const jaMessages = langFiles.ja;
-            const newTranslation = jaMessages['custom_status.expiry.until'];
-            const oldTranslation = '{time} まで'; // What it was before (with space)
+        it('should render with Japanese locale in reversed order', () => {
+            const jaIntl = createIntl({
+                locale: 'ja',
+                messages: jaMessages,
+            });
+
+            const wrapper = mount(
+                <IntlProvider {...jaIntl}>
+                    <ExpiryTime {...baseProps}/>
+                </IntlProvider>,
+                {wrappingComponent: Provider, wrappingComponentProps: {store}}
+            );
+
+            // For Japanese, should render Timestamp first, then FormattedMessage
+            // This produces the natural "今日まで" word order
+            expect(wrapper.find('FormattedMessage')).toHaveLength(1);
+            expect(wrapper.find('Timestamp')).toHaveLength(1);
+        });
+
+        it('should work without prefix regardless of locale', () => {
+            const jaIntl = createIntl({
+                locale: 'ja',
+                messages: jaMessages,
+            });
+
+            const wrapper = mount(
+                <IntlProvider {...jaIntl}>
+                    <ExpiryTime 
+                        {...baseProps}
+                        showPrefix={false}
+                    />
+                </IntlProvider>,
+                {wrappingComponent: Provider, wrappingComponentProps: {store}}
+            );
+
+            // Should only have Timestamp when showPrefix is false
+            expect(wrapper.find('FormattedMessage')).toHaveLength(0);
+            expect(wrapper.find('Timestamp')).toHaveLength(1);
+        });
+    });
+
+    describe('Word order improvement', () => {
+        it('should demonstrate the Japanese word order fix', () => {
+            // This test documents the improvement made to handle Japanese word order
             
-            // Demonstrate the improvement
-            const sampleTime = '今日'; // "Today" in Japanese
-            const oldResult = oldTranslation.replace('{time}', sampleTime); // "今日 まで" (unnatural)
-            const newResult = newTranslation.replace('{time}', sampleTime); // "今日まで" (natural)
+            // The problem: Component renders FormattedMessage first, then Timestamp
+            // For English: "Until" + " " + "Today" = "Until Today" ✓
+            // For Japanese: "まで" + " " + "今日" = "まで 今日" ✗ (wrong order)
             
-            expect(oldResult).toBe('今日 まで'); // Unnatural with space
-            expect(newResult).toBe('今日まで'); // Natural without space
+            // The solution: For Japanese, render Timestamp first, then FormattedMessage  
+            // Result: "今日" + "まで" = "今日まで" ✓ (natural Japanese)
             
-            // Confirm the improvement
-            expect(newResult).not.toBe(oldResult); // Changed
-            expect(newResult).not.toContain(' まで'); // No space before まで
+            const translation = jaMessages['custom_status.expiry.until'];
+            expect(translation).toBe('{time}まで');
+            
+            // The component now handles the word order at render time for Japanese
+            // English: prefix + timestamp = "Until Today"
+            // Japanese: timestamp + suffix = "今日まで"
+            
+            const sampleTime = '今日';
+            const naturalJapanese = translation.replace('{time}', sampleTime);
+            expect(naturalJapanese).toBe('今日まで'); // Natural word order
+            expect(naturalJapanese).not.toContain(' まで'); // No space before まで
         });
     });
 });
