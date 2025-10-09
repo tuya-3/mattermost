@@ -6,12 +6,137 @@ This document provides a comprehensive explanation of the display logic for chan
 
 ## Table of Contents
 
-1. [Display Logic Components](#display-logic-components)
-2. [Display Limit Configuration](#display-limit-configuration)
-3. [Filtering and Sorting Rules](#filtering-and-sorting-rules)
-4. [Deletion/Hide Priority](#deletionhide-priority)
-5. [PC and Mobile Synchronization](#pc-and-mobile-synchronization)
-6. [Technical Implementation](#technical-implementation)
+1. [Visual Flow Diagram](#visual-flow-diagram)
+2. [Display Logic Components](#display-logic-components)
+3. [Display Limit Configuration](#display-limit-configuration)
+4. [Filtering and Sorting Rules](#filtering-and-sorting-rules)
+5. [Deletion/Hide Priority](#deletionhide-priority)
+6. [PC and Mobile Synchronization](#pc-and-mobile-synchronization)
+7. [Technical Implementation](#technical-implementation)
+
+## Visual Flow Diagram
+
+The following Mermaid diagram illustrates the complete flow of the sidebar DM/GM display logic:
+
+```mermaid
+flowchart TD
+    Start([Start: Render Sidebar DMs/GMs]) --> CheckCategory{Is category<br/>DIRECT_MESSAGES?}
+    
+    CheckCategory -->|No| ReturnAll[Return all channels<br/>unchanged]
+    CheckCategory -->|Yes| LoadPrefs[Load user preferences<br/>and channel data]
+    
+    LoadPrefs --> Filter1[Filter 1:<br/>Archived Channels]
+    Filter1 --> Filter1Check{Is channel archived<br/>delete_at > 0?}
+    Filter1Check -->|Yes, and not current| Remove1[Remove from list]
+    Filter1Check -->|No or is current| Keep1[Keep in list]
+    Remove1 --> Filter2
+    Keep1 --> Filter2
+    
+    Filter2[Filter 2:<br/>Manually Closed DMs] --> Filter2Check{User manually closed?<br/>preference = 'false'}
+    Filter2Check -->|Yes, and not unread<br/>and not current| Remove2[Remove from list]
+    Filter2Check -->|No or is unread<br/>or is current| Keep2[Keep in list]
+    Remove2 --> Filter3
+    Keep2 --> Filter3
+    
+    Filter3[Filter 3:<br/>Auto-close DMs] --> CountUnread[Count unread channels<br/>unreadCount = 0]
+    
+    CountUnread --> FilterLoop{For each<br/>channel}
+    
+    FilterLoop --> CheckUnread{Is channel<br/>unread?}
+    CheckUnread -->|Yes| IncUnread[unreadCount++<br/>Keep channel]
+    CheckUnread -->|No| CheckCurrent{Is current<br/>channel?}
+    
+    CheckCurrent -->|Yes| KeepCurrent[Keep channel]
+    CheckCurrent -->|No| CheckDeactivated{DM with<br/>deactivated user?}
+    
+    CheckDeactivated -->|Yes, viewed before<br/>deactivation| RemoveDeactivated[Remove channel]
+    CheckDeactivated -->|No or viewed after<br/>deactivation| KeepActive[Keep channel]
+    
+    IncUnread --> NextChannel
+    KeepCurrent --> NextChannel
+    RemoveDeactivated --> NextChannel
+    KeepActive --> NextChannel
+    
+    NextChannel{More<br/>channels?}
+    NextChannel -->|Yes| FilterLoop
+    NextChannel -->|No| SortChannels
+    
+    SortChannels[Sort visible channels<br/>by priority] --> SortStep1{Priority 1:<br/>Current channel?}
+    SortStep1 -->|channelA is current| AFirst[A comes first]
+    SortStep1 -->|channelB is current| BFirst[B comes first]
+    SortStep1 -->|Neither| SortStep2
+    
+    AFirst --> Continue
+    BFirst --> Continue
+    
+    SortStep2{Priority 2:<br/>Unread status} --> CheckUnreadSort{Different<br/>unread status?}
+    CheckUnreadSort -->|A unread, B read| AFirst2[A comes first]
+    CheckUnreadSort -->|B unread, A read| BFirst2[B comes first]
+    CheckUnreadSort -->|Same status| SortStep3
+    
+    AFirst2 --> Continue
+    BFirst2 --> Continue
+    
+    SortStep3{Priority 3:<br/>Last viewed time} --> CompareTime{Compare<br/>last_viewed_at}
+    CompareTime -->|A > B| AFirst3[A comes first<br/>most recent first]
+    CompareTime -->|B > A| BFirst3[B comes first<br/>most recent first]
+    CompareTime -->|Equal| Equal[Keep original order]
+    
+    AFirst3 --> Continue
+    BFirst3 --> Continue
+    Equal --> Continue
+    
+    Continue[Continue sorting] --> CalcLimit[Calculate limit:<br/>remaining = max limitPref, unreadCount]
+    
+    CalcLimit --> ApplyLimit[Slice array:<br/>visibleChannels = visibleChannels.slice 0, remaining]
+    
+    ApplyLimit --> Explanation{Example:<br/>limit=10, unread=12}
+    Explanation -->|Shows| ShowAll[All 12 unread channels<br/>limit overridden]
+    
+    ShowAll --> FilterOriginal[Filter original array<br/>to maintain order]
+    FilterOriginal --> ReturnFiltered[Return filtered channels]
+    
+    ReturnAll --> End([End])
+    ReturnFiltered --> End
+    
+    style Start fill:#e1f5e1
+    style End fill:#ffe1e1
+    style Filter1 fill:#e3f2fd
+    style Filter2 fill:#e3f2fd
+    style Filter3 fill:#e3f2fd
+    style CountUnread fill:#fff3e0
+    style SortChannels fill:#f3e5f5
+    style CalcLimit fill:#ffebee
+    style ApplyLimit fill:#ffebee
+    style Explanation fill:#fff9c4
+```
+
+### Diagram Legend
+
+- **Green boxes**: Start/End points
+- **Blue boxes**: Filter stages (3-tier filtering)
+- **Orange boxes**: Unread counting logic
+- **Purple boxes**: Sorting logic
+- **Red boxes**: Limit calculation and application
+- **Yellow boxes**: Example/explanation
+- **Diamond shapes**: Decision points
+
+### Key Algorithm Steps
+
+1. **Three-Tier Filtering**
+   - Filter 1: Remove archived channels (except current)
+   - Filter 2: Remove manually closed DMs (except unread/current)
+   - Filter 3: Apply auto-close logic with priority handling
+
+2. **Priority-Based Sorting**
+   - Priority 1: Current channel always first
+   - Priority 2: Unread channels before read channels
+   - Priority 3: Most recently viewed first (descending `last_viewed_at`)
+
+3. **Limit Application**
+   - Formula: `remaining = Math.max(limitPref, unreadCount)`
+   - Ensures unread channels always visible
+   - Oldest viewed channels hidden first when limit exceeded
 
 ## Display Logic Components
 
@@ -60,9 +185,85 @@ Users can set this limit in two places:
 
 ## Filtering and Sorting Rules
 
+### Visual Priority Hierarchy
+
+```mermaid
+graph TB
+    subgraph "Channel Visibility Priority High to Low"
+        P1[Priority 1: Unread Channels<br/>ALWAYS SHOWN<br/>Overrides limit]
+        P2[Priority 2: Current Channel<br/>ALWAYS SHOWN<br/>The channel being viewed]
+        P3[Priority 3: Recently Viewed<br/>UP TO LIMIT<br/>Sorted by last_viewed_at]
+    end
+    
+    P1 --> P2 --> P3
+    
+    subgraph "When Limit is Exceeded"
+        H1[Hidden First:<br/>Oldest viewed channels<br/>lowest last_viewed_at]
+        H2[Hidden Second:<br/>Never viewed channels<br/>last_viewed_at = 0]
+        H3[Hidden Third:<br/>DMs with deactivated users<br/>viewed before deactivation]
+    end
+    
+    H1 --> H2 --> H3
+    
+    subgraph "Limit Calculation"
+        Formula[remaining = max limitPref, unreadCount]
+        Example1[Example 1:<br/>limit=10, unread=3<br/>shows 10 total]
+        Example2[Example 2:<br/>limit=10, unread=12<br/>shows 12 all unread]
+    end
+    
+    Formula --> Example1
+    Formula --> Example2
+    
+    style P1 fill:#c8e6c9
+    style P2 fill:#fff9c4
+    style P3 fill:#bbdefb
+    style H1 fill:#ffcdd2
+    style H2 fill:#ffcdd2
+    style H3 fill:#ffcdd2
+    style Formula fill:#e1bee7
+    style Example1 fill:#f0f4c3
+    style Example2 fill:#f0f4c3
+```
+
 ### Primary Filters
 
 The sidebar applies multiple layers of filtering before displaying channels:
+
+```mermaid
+flowchart LR
+    Input[All DM/GM Channels] --> Filter1
+    
+    subgraph Filter1[Filter 1: Archived Channels]
+        F1Q{Archived?<br/>delete_at > 0}
+        F1Q -->|Yes & not current| F1Remove[Remove]
+        F1Q -->|No or is current| F1Keep[Keep]
+    end
+    
+    Filter1 --> Filter2
+    
+    subgraph Filter2[Filter 2: Manually Closed]
+        F2Q{Manually closed?<br/>preference = 'false'}
+        F2Q -->|Yes & not unread<br/>& not current| F2Remove[Remove]
+        F2Q -->|No or unread<br/>or current| F2Keep[Keep]
+    end
+    
+    Filter2 --> Filter3
+    
+    subgraph Filter3[Filter 3: Auto-close Limit]
+        F3Count[Count unread channels]
+        F3Count --> F3Sort[Sort by priority:<br/>1 Current<br/>2 Unread<br/>3 Recent]
+        F3Sort --> F3Calc[remaining = max limit, unread]
+        F3Calc --> F3Slice[Keep top N channels]
+    end
+    
+    Filter3 --> Output[Visible Channels in Sidebar]
+    
+    style Input fill:#e3f2fd
+    style Output fill:#c8e6c9
+    style Filter1 fill:#fff3e0
+    style Filter2 fill:#f3e5f5
+    style Filter3 fill:#ffebee
+```
 
 #### 1. Archived Channel Filter (`makeFilterArchivedChannels`)
 
