@@ -1,0 +1,143 @@
+name: Cherry Pick on Comment
+
+on:
+  issue_comment:
+    types: [created]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  cherry-pick:
+    if: |
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/cherry-pick ')
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: write
+
+    steps:
+      - name: Add 'eyes' reaction
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ github.event.comment.id }},
+              content: 'eyes'
+            });
+
+      - name: Parse command
+        id: parse
+        run: |
+          TARGET_BRANCH=$(echo "${{ github.event.comment.body }}" | cut -d' ' -f2)
+          echo "targetBranch=${TARGET_BRANCH}" >> $GITHUB_OUTPUT
+          echo "prNumber=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+
+      - name: Get PR merge commit SHA
+        id: get_pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.parse.outputs.prNumber }};
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            if (!pr.merged) {
+              core.setFailed(`PR #${prNumber} is not merged.`);
+              return;
+            }
+            if (!pr.merge_commit_sha) {
+              core.setFailed('Could not find merge_commit_sha. (Was this PR merged using "Rebase and merge"?)');
+              return;
+            }
+
+            return {
+              mergeSha: pr.merge_commit_sha,
+              prTitle: pr.title
+            };
+      
+      - name: Set PR outputs
+        id: pr_info
+        run: |
+          echo "mergeSha=${{ fromJson(steps.get_pr.outputs.result).mergeSha }}" >> $GITHUB_OUTPUT
+          echo "prTitle=${{ fromJson(steps.get_pr.outputs.result).prTitle }}" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Cherry-pick
+        id: cherry_pick
+        continue-on-error: true
+        run: |
+          TARGET_BRANCH="${{ steps.parse.outputs.targetBranch }}"
+          MERGE_SHA="${{ steps.pr_info.outputs.mergeSha }}"
+          NEW_BRANCH_NAME="auto-cherry-pick/${MERGE_SHA:0:7}-to-${TARGET_BRANCH}"
+          echo "newBranchName=${NEW_BRANCH_NAME}" >> $GITHUB_OUTPUT
+
+          git fetch origin $TARGET_BRANCH
+          git checkout -b $NEW_BRANCH_NAME origin/$TARGET_BRANCH
+          git cherry-pick $MERGE_SHA
+
+      - name: Handle conflict
+        if: steps.cherry_pick.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.parse.outputs.prNumber }};
+            const targetBranch = '${{ steps.parse.outputs.targetBranch }}';
+            const mergeSha = '${{ steps.pr_info.outputs.mergeSha }}';
+            
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ github.event.comment.id }},
+              content: 'confused'
+            });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `❌ Failed to cherry-pick ${mergeSha} to \`${targetBranch}\` due to conflicts. Please resolve manually.`
+            });
+            core.setFailed('Cherry-pick conflict.');
+
+      - name: Push and Create PR
+        if: steps.cherry_pick.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push origin ${{ steps.cherry_pick.outputs.newBranchName }}
+
+          gh pr create \
+            --base "${{ steps.parse.outputs.targetBranch }}" \
+            --head "${{ steps.cherry_pick.outputs.newBranchName }}" \
+            --title "[Cherry-Pick] ${{ steps.pr_info.outputs.prTitle }} (to ${{ steps.parse.outputs.targetBranch }})" \
+            --body "Automated cherry-pick of #${{ steps.parse.outputs.prNumber }}."
+
+      - name: Add 'rocket' reaction
+        if: steps.cherry_pick.outcome == 'success'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: ${{ github.event.comment.id }},
+              content: 'rocket'
+            });
