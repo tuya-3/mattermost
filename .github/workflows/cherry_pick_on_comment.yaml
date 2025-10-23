@@ -36,6 +36,17 @@ jobs:
         id: parse
         run: |
           TARGET_BRANCH=$(echo "${{ github.event.comment.body }}" | cut -d' ' -f2)
+
+          if ! echo "$TARGET_BRANCH" | grep -Eq '^release-.*$'; then
+            echo "Error: Target branch '$TARGET_BRANCH' is not allowed. Only branches matching 'release-*' are permitted."
+            exit 1
+          fi
+
+          if ! echo "$TARGET_BRANCH" | grep -Eq '^[a-zA-Z0-9/_.-]+$'; then
+            echo "Error: Target branch '$TARGET_BRANCH' contains invalid characters."
+            exit 1
+          fi
+
           echo "targetBranch=${TARGET_BRANCH}" >> $GITHUB_OUTPUT
           echo "prNumber=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
 
@@ -90,9 +101,14 @@ jobs:
           NEW_BRANCH_NAME="auto-cherry-pick/${MERGE_SHA:0:7}-to-${TARGET_BRANCH}"
           echo "newBranchName=${NEW_BRANCH_NAME}" >> $GITHUB_OUTPUT
 
-          git fetch origin $TARGET_BRANCH
-          git checkout -b $NEW_BRANCH_NAME origin/$TARGET_BRANCH
-          git cherry-pick $MERGE_SHA
+          if ! git ls-remote --heads origin "refs/heads/${TARGET_BRANCH}" | grep -q "refs/heads/${TARGET_BRANCH}"; then
+            echo "❌ Target branch '${TARGET_BRANCH}' does not exist on remote."
+            exit 1
+          fi
+
+          git fetch origin "${TARGET_BRANCH}"
+          git checkout -b "${NEW_BRANCH_NAME}" origin/${TARGET_BRANCH}
+          git cherry-pick "${MERGE_SHA}"
 
       - name: Handle conflict
         if: steps.cherry_pick.outcome == 'failure'
