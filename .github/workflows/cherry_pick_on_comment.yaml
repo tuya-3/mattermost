@@ -108,7 +108,7 @@ jobs:
 
           git fetch origin "${TARGET_BRANCH}"
           git checkout -b "${NEW_BRANCH_NAME}" origin/${TARGET_BRANCH}
-          git cherry-pick "${MERGE_SHA}"
+          git cherry-pick -m 1 "${MERGE_SHA}"
 
       - name: Handle conflict
         if: steps.cherry_pick.outcome == 'failure'
