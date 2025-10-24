@@ -33,11 +33,11 @@ jobs:
           
           # Pattern to match version tags like v10.9.4-custom-v1.8
           # Try to find tag in title first
-          TAG=$(echo "$PR_TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)*' | head -1)
+          TAG=$(echo "$PR_TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9_-]+)*' | head -1)
           
           # If not found in title, try body
           if [ -z "$TAG" ]; then
-            TAG=$(echo "$PR_BODY" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9._-]+)*' | head -1)
+            TAG=$(echo "$PR_BODY" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9_-]+)*' | head -1)
           fi
           
           if [ -z "$TAG" ]; then
@@ -75,6 +75,9 @@ jobs:
           PR_TITLE="${{ github.event.pull_request.title }}"
           PR_URL="${{ github.event.pull_request.html_url }}"
           MERGED_BY="${{ github.event.pull_request.merged_by.login }}"
+
+          # Sanitize PR_TITLE to escape double quotes and newlines
+          SAFE_PR_TITLE=$(printf "%s" "$PR_TITLE" | sed 's/"/\\"/g' | tr '\n' ' ')
           
           # Create annotated tag with metadata
           git config user.name "github-actions[bot]"
@@ -82,7 +85,7 @@ jobs:
           
           TAG_MESSAGE="Release $TAG
           
-          Merged from PR #$PR_NUMBER: $PR_TITLE
+          Merged from PR #$PR_NUMBER: $SAFE_PR_TITLE
           PR URL: $PR_URL
           Merged by: $MERGED_BY
           Commit: $COMMIT_SHA"
@@ -98,10 +101,10 @@ jobs:
         with:
           script: |
             const tag = '${{ steps.extract-tag.outputs.tag }}';
-            const prNumber = '${{ github.event.pull_request.number }}';
-            const prTitle = '${{ github.event.pull_request.title }}';
-            const prUrl = '${{ github.event.pull_request.html_url }}';
-            const mergedBy = '${{ github.event.pull_request.merged_by.login }}';
+            const prNumber = context.payload.pull_request.number;
+            const prTitle = context.payload.pull_request.title;
+            const prUrl = context.payload.pull_request.html_url;
+            const mergedBy = context.payload.pull_request.merged_by.login;
             
             try {
               await github.rest.repos.createRelease({
@@ -111,7 +114,7 @@ jobs:
                 name: `Release ${tag}`,
                 body: `## ${prTitle}\n\nMerged from PR #${prNumber}\n- PR: ${prUrl}\n- Merged by: @${mergedBy}\n\nThis release was automatically created by the auto-tag workflow.`,
                 draft: false,
-                prerelease: tag.includes('-'),
+                prerelease: /-(alpha|beta|rc|dev)\b/i.test(tag),
               });
               console.log('Created release for tag: ' + tag);
             } catch (error) {
