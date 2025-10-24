@@ -92,6 +92,18 @@ export function makeFilterArchivedChannels(): (state: GlobalState, channels: Cha
     );
 }
 
+// makeFilterAutoclosedDMs creates a selector that filters and limits the number of DMs/GMs shown in the sidebar.
+// This implements the "auto-close" feature where old DMs are automatically hidden when the user-configured limit is exceeded.
+//
+// Display Priority (highest to lowest):
+// 1. Unread DMs/GMs - Always shown, regardless of limit
+// 2. Current channel - The channel being actively viewed
+// 3. Recently viewed DMs - Up to the configured limit, sorted by last_viewed_at timestamp
+//
+// The limit can be overridden by unread channels: if there are more unread DMs than the limit,
+// all unread DMs will be shown (e.g., 5 unread DMs will show even if limit is 3).
+//
+// See docs/SIDEBAR_CHANNEL_DM_DISPLAY_LOGIC.md for detailed documentation.
 export function makeFilterAutoclosedDMs(): (state: GlobalState, channels: Channel[], categoryType: string) => Channel[] {
     return createSelector(
         'makeFilterAutoclosedDMs',
@@ -111,10 +123,13 @@ export function makeFilterAutoclosedDMs(): (state: GlobalState, channels: Channe
                 return channels;
             }
 
+            // Helper to read timestamp from legacy preference keys
             const getTimestampFromPrefs = (category: string, name: string) => {
                 const pref = myPreferences[getPreferenceKey(category, name)];
                 return parseInt(pref ? pref.value! : '0', 10);
             };
+
+            // Gets the most recent view time from multiple sources for backward compatibility
             const getLastViewedAt = (channel: Channel) => {
                 // The server only ever sets the last_viewed_at to the time of the last post in channel, so we may need
                 // to use the preferences added for the previous version of autoclosing DMs.
@@ -125,8 +140,11 @@ export function makeFilterAutoclosedDMs(): (state: GlobalState, channels: Channe
                 );
             };
 
+            // First pass: Filter out channels that should never be visible
+            // and count unread channels (which always remain visible)
             let unreadCount = 0;
             let visibleChannels = channels.filter((channel) => {
+                // Priority 1: Unread channels are always visible
                 if (isUnreadChannel(channel.id, messageCounts, myMembers, collapsedThreads)) {
                     unreadCount++;
 
@@ -134,10 +152,12 @@ export function makeFilterAutoclosedDMs(): (state: GlobalState, channels: Channe
                     return true;
                 }
 
+                // Priority 2: Current channel is always visible
                 if (channel.id === currentChannelId) {
                     return true;
                 }
 
+                // Filter out DMs with deactivated users, unless the DM was viewed after deactivation
                 // DMs with deactivated users will be visible if you're currently viewing them and they were opened
                 // since the user was deactivated
                 if (channel.type === General.DM_CHANNEL) {
@@ -146,6 +166,7 @@ export function makeFilterAutoclosedDMs(): (state: GlobalState, channels: Channe
 
                     const lastViewedAt = getLastViewedAt(channel);
 
+                    // Hide if user doesn't exist or was deactivated before the last view
                     if (!teammate || teammate.delete_at > lastViewedAt) {
                         return false;
                     }
@@ -154,7 +175,10 @@ export function makeFilterAutoclosedDMs(): (state: GlobalState, channels: Channe
                 return true;
             });
 
+            // Second pass: Sort channels by priority
+            // This determines which channels get hidden when the limit is exceeded
             visibleChannels.sort((channelA, channelB) => {
+                // Priority 1: Current channel always appears first
                 // Should always prioritise the current channel
                 if (channelA.id === currentChannelId) {
                     return -1;
@@ -162,6 +186,7 @@ export function makeFilterAutoclosedDMs(): (state: GlobalState, channels: Channe
                     return 1;
                 }
 
+                // Priority 2: Unread channels appear before read channels
                 // Second priority is for unread channels
                 if (isUnreadChannel(channelA.id, messageCounts, myMembers, collapsedThreads) && !isUnreadChannel(channelB.id, messageCounts, myMembers, collapsedThreads)) {
                     return -1;
@@ -169,6 +194,8 @@ export function makeFilterAutoclosedDMs(): (state: GlobalState, channels: Channe
                     return 1;
                 }
 
+                // Priority 3: Most recently viewed channels appear first
+                // This means the oldest viewed channels will be at the end and hidden first when limit is exceeded
                 // Third priority is last_viewed_at
                 const channelAlastViewed = getLastViewedAt(channelA) || 0;
                 const channelBlastViewed = getLastViewedAt(channelB) || 0;
@@ -182,18 +209,37 @@ export function makeFilterAutoclosedDMs(): (state: GlobalState, channels: Channe
                 return 0;
             });
 
+            // Third pass: Apply the limit
+            // The limit is the maximum of: user's configured limit OR number of unread channels
+            // This ensures all unread channels are always shown, even if they exceed the limit
             // The limit of DMs user specifies to be rendered in the sidebar
             const remaining = Math.max(limitPref, unreadCount);
             visibleChannels = visibleChannels.slice(0, remaining);
 
+            // Maintain original channel order by filtering the input array
+            // This preserves any existing order in the category
             const visibleChannelsSet = new Set(visibleChannels);
             const filteredChannels = channels.filter((channel) => visibleChannelsSet.has(channel));
 
+            // Return original array if nothing was filtered (optimization to prevent unnecessary re-renders)
             return filteredChannels.length === channels.length ? channels : filteredChannels;
         },
     );
 }
 
+// makeFilterManuallyClosedDMs creates a selector that filters out DMs/GMs that the user has explicitly closed.
+// This is different from auto-close: users can manually close a DM via the "Close Direct Message" menu option.
+//
+// Behavior:
+// - Checks the 'direct_channel_show' preference for DMs (keyed by teammate's user ID)
+// - Checks the 'group_channel_show' preference for GMs (keyed by channel ID)
+// - If preference value is 'false', the DM/GM is hidden
+//
+// Exceptions (always shown regardless of preference):
+// - Unread DMs/GMs (to prevent missing messages)
+// - Current channel (the one being actively viewed)
+//
+// See docs/SIDEBAR_CHANNEL_DM_DISPLAY_LOGIC.md for detailed documentation.
 export function makeFilterManuallyClosedDMs(): (state: GlobalState, channels: Channel[]) => Channel[] {
     return createSelector(
         'makeFilterManuallyClosedDMs',
@@ -208,31 +254,40 @@ export function makeFilterManuallyClosedDMs(): (state: GlobalState, channels: Ch
             const filtered = channels.filter((channel) => {
                 let preference;
 
+                // Only filter DMs and GMs; regular channels are not affected
                 if (channel.type !== General.DM_CHANNEL && channel.type !== General.GM_CHANNEL) {
                     return true;
                 }
 
+                // Exception 1: Unread DMs/GMs are always visible
                 if (isUnreadChannel(channel.id, messageCounts, myMembers, collapsedThreads)) {
                     // Unread DMs/GMs are always visible
                     return true;
                 }
 
+                // Exception 2: Current channel is always visible
                 if (currentChannelId === channel.id) {
                     // The current channel is always visible
                     return true;
                 }
 
+                // Look up the user's preference for this DM/GM
                 if (channel.type === General.DM_CHANNEL) {
+                    // For DMs, the preference is keyed by the teammate's user ID
                     const teammateId = getUserIdFromChannelName(currentUserId, channel.name);
 
                     preference = myPreferences[getPreferenceKey(Preferences.CATEGORY_DIRECT_CHANNEL_SHOW, teammateId)];
                 } else {
+                    // For GMs, the preference is keyed by the channel ID
                     preference = myPreferences[getPreferenceKey(Preferences.CATEGORY_GROUP_CHANNEL_SHOW, channel.id)];
                 }
 
+                // Show the channel if preference doesn't exist or is not explicitly 'false'
+                // (absence of preference means the channel should be shown)
                 return preference && preference.value !== 'false';
             });
 
+            // Return original array if nothing was filtered (optimization to prevent unnecessary re-renders)
             // Only return a new array if anything was removed
             return filtered.length === channels.length ? channels : filtered;
         },
