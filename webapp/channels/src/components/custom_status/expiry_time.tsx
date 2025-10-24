@@ -3,7 +3,7 @@
 
 import moment from 'moment-timezone';
 import React from 'react';
-import {FormattedMessage} from 'react-intl';
+import {FormattedMessage, useIntl} from 'react-intl';
 
 import Timestamp, {RelativeRanges} from 'components/timestamp';
 import type {Props as TimestampProps} from 'components/timestamp/timestamp';
@@ -24,6 +24,7 @@ interface Props {
 }
 
 const ExpiryTime = ({time, timezone, className, showPrefix, withinBrackets}: Props) => {
+    const intl = useIntl();
     const currentMomentTime = getCurrentMomentForTimezone(timezone);
     const timestampProps: Partial<TimestampProps> = {
         value: time,
@@ -62,13 +63,33 @@ const ExpiryTime = ({time, timezone, className, showPrefix, withinBrackets}: Pro
         </>
     );
 
+    const timestamp = <Timestamp {...timestampProps}/>;
+    
+    // For Japanese, we need to reverse the word order to show "今日まで" instead of "まで今日"
+    const isJapanese = intl.locale === 'ja';
+    
+    const content = showPrefix ? (
+        isJapanese ? (
+            <>
+                {timestamp}
+                <FormattedMessage
+                    id='custom_status.expiry.until'
+                    defaultMessage='Until {time}'
+                    values={{time: ''}}
+                />
+            </>
+        ) : (
+            <>
+                {prefix}
+                {timestamp}
+            </>
+        )
+    ) : timestamp;
+
     return (
         <span className={className}>
             {withinBrackets && '('}
-            {prefix}
-            <Timestamp
-                {...timestampProps}
-            />
+            {content}
             {withinBrackets && ')'}
         </span>
     );
