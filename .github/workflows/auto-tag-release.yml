@@ -33,11 +33,11 @@ jobs:
           
           # Pattern to match version tags like v10.9.4-custom-v1.8
           # Try to find tag in title first
-          TAG=$(echo "$PR_TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9_-]+)*' | head -1)
+          TAG=$(echo "$PR_TITLE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9_.-]+)*' | head -1)
           
           # If not found in title, try body
           if [ -z "$TAG" ]; then
-            TAG=$(echo "$PR_BODY" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9_-]+)*' | head -1)
+            TAG=$(echo "$PR_BODY" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9_.-]+)*' | head -1)
           fi
           
           if [ -z "$TAG" ]; then
