@@ -16,6 +16,23 @@ import type EmojiMap from './emoji_map.js';
 import * as Emoticons from './emoticons';
 import * as Markdown from './markdown';
 
+const DEFAULT_OPTIONS: TextFormattingOptions = {
+    mentionHighlight: true,
+    disableGroupHighlight: false,
+    singleline: false,
+    emoticons: true,
+    markdown: true,
+    atMentions: false,
+    atSumOfMembersMentions: false,
+    atPlanMentions: false,
+    minimumHashtagLength: 3,
+    proxyImages: false,
+    editedAt: 0,
+    postId: '',
+    unsafeLinks: false,
+    renderEmoticonsAsEmoji: true,
+};
+
 const punctuationRegex = /[^\p{L}\d]/u;
 const UNICODE_EMOJI_REGEX = emojiRegex();
 const htmlEmojiPattern = /^<p>\s*(?:<img class="emoticon"[^>]*>|<span data-emoticon[^>]*>[^<]*<\/span>\s*|<span class="emoticon emoticon--unicode">[^<]*<\/span>\s*)+<\/p>$/;
@@ -241,23 +258,6 @@ export class Tokens extends Map<string, {value: string; originalText: string; ha
     }
 }
 
-const DEFAULT_OPTIONS: TextFormattingOptions = {
-    mentionHighlight: true,
-    disableGroupHighlight: false,
-    singleline: false,
-    emoticons: true,
-    markdown: true,
-    atMentions: false,
-    atSumOfMembersMentions: false,
-    atPlanMentions: false,
-    minimumHashtagLength: 3,
-    proxyImages: false,
-    editedAt: 0,
-    postId: '',
-    unsafeLinks: false,
-    renderEmoticonsAsEmoji: true,
-};
-
 /**
 * pattern to detect the existence of a Chinese, Japanese, or Korean character in a string
 * http://stackoverflow.com/questions/15033196/using-javascript-to-check-whether-a-string-contains-japanese-characters-includi
@@ -275,8 +275,18 @@ const DEFAULT_OPTIONS: TextFormattingOptions = {
 * Additional CJK and Hangul compatibility characters: \u2de0-\u2dff
 * Thai characters: \u0e00-\u0e7f
 **/
-// eslint-disable-next-line no-misleading-character-class
-export const cjkrPattern = /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf\uac00-\ud7a3\u1100-\u11ff\u3130-\u318f\u0400-\u04ff\u0500-\u052f\u2de0-\u2dff\u0e00-\u0e7f]/;
+// Using Unicode property escapes for better cross-environment compatibility
+// Fallback to character class ranges for older environments
+export const cjkrPattern = (() => {
+    try {
+        // Try using Unicode property escapes first (more reliable)
+        return new RegExp('[\\p{Script=Han}\\p{Script=Hiragana}\\p{Script=Katakana}\\p{Script=Hangul}\\p{Script=Cyrillic}\\p{Script=Thai}\\u3000-\\u303f\\uff00-\\uff9f]', 'u');
+    } catch (e) {
+        // Fallback to character class ranges for older Node.js versions
+        // eslint-disable-next-line no-misleading-character-class
+        return /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf\uac00-\ud7a3\u1100-\u11ff\u3130-\u318f\u0400-\u04ff\u0500-\u052f\u2de0-\u2dff\u0e00-\u0e7f]/;
+    }
+})();
 
 export function formatText(
     text: string,
